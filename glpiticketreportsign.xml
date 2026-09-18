@@ -9,6 +9,10 @@
             <lang id="en">Generate per-ticket PDF reports with follow-ups, solutions, embedded images and a hand-drawn technician signature.</lang>
             <lang id="es">Genera informes PDF por ticket con seguimientos, soluciones, imágenes incrustadas y firma manuscrita del técnico.</lang>
         </short>
+        <long>
+            <en>Adds a Report tab to every GLPI Ticket. From that tab the assigned technician (or their group supervisor) can generate a PDF report with the ticket header, every follow-up and solution (with attached images inlined), collect a hand-drawn signature from both technician and client on any device, and send a single-use, time-limited signing link by email so the client can sign remotely without a GLPI login. The signed PDF is stored as a normal GLPI Document linked to the ticket. Includes a fully configurable header/logo/colours/disclaimer/footer with a live preview, and works on GLPI 10, 11 and 12 from a single codebase.</en>
+            <es>Agrega una pestaña Informe a cada Ticket de GLPI. Desde esa pestaña, el técnico asignado (o el responsable de su grupo) puede generar un informe en PDF con la cabecera del ticket, todos los seguimientos y soluciones (con sus imágenes adjuntas incrustadas), recolectar la firma manuscrita del técnico y del cliente en cualquier dispositivo, y enviar un enlace de firma de un solo uso y con vencimiento por correo para que el cliente firme de forma remota sin necesitar sesión en GLPI. El PDF firmado se guarda como un Documento normal de GLPI, vinculado al ticket. Incluye una cabecera/logo/colores/disclaimer/pie totalmente configurables con vista previa en vivo, y funciona en GLPI 10, 11 y 12 desde un mismo código base.</es>
+        </long>
     </description>
     <homepage>https://github.com/scmilhon/glpi-ticket-report-sign</homepage>
     <download></download>
