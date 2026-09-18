@@ -42,24 +42,6 @@ git clone <este-repo> glpiticketreportsign
 
 En **Configurar → Plugins**, instala y activa **Ticket Report & Sign**.
 
-> ¿Actualizando desde la clave vieja `ticketreport`? Reemplaza la carpeta
-> vieja del plugin por esta (mismo directorio `plugins/` de GLPI, nuevo
-> nombre de carpeta), y luego dale clic en **Instalar** sobre la entrada
-> "Ticket Report & Sign" que aparecerá — el instalador detecta las tablas
-> viejas `glpi_plugin_ticketreport_*` y los permisos de perfil
-> `plugin_ticketreport_*`, y los renombra en el sitio, así que no se
-> pierde ningún informe, firma ni permiso ya otorgado. La entrada vieja
-> que queda huérfana en la lista de plugins (apuntando a la carpeta
-> `ticketreport/` que ya no existe) se puede borrar desde ahí después.
-
-El plugin crea dos tablas:
-* `glpi_plugin_glpiticketreportsign_reports` — una fila por cada versión generada
-* `glpi_plugin_glpiticketreportsign_signlinks` — tokens de firma por correo pendientes
-
-Ambas se eliminan al desinstalar; los Documentos de GLPI que el plugin
-generó no se tocan, así que los PDF ya firmados siguen adjuntos a sus
-tickets.
-
 ## Autorización
 
 Solo los usuarios que cumplan alguna de estas condiciones en un ticket
@@ -117,11 +99,3 @@ glpiticketreportsign/
         ├── Authorizer.php          # regla por ticket "técnico asignado / responsable"
         └── SigningToken.php        # tokens de un solo uso firmados con HMAC, por correo
 ```
-
-`Report` y `TicketTab` se entregan como dos archivos hoja cada uno porque
-GLPI 12 tipó la propiedad estática `$rightname` de `CommonDBTM`/`CommonGLPI`
-como `string` (sin tipo en GLPI 10/11); PHP exige que una clase hija que
-redeclare esa propiedad use exactamente el mismo tipo, así que un solo
-archivo no puede satisfacer ambas versiones. El autoloader de `setup.php`
-elige la hoja correcta en tiempo de ejecución mediante reflexión — ver
-https://github.com/glpi-project/glpi/issues/25399.
