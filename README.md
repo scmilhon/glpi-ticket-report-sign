@@ -42,10 +42,6 @@ git clone <this-repo> glpiticketreportsign
 
 In **Setup → Plugins**, install + enable **Ticket Report & Sign**.
 
-Both are dropped on uninstall; the underlying Document rows the
-plugin produced are not touched, so previously signed PDFs remain
-attached to their tickets.
-
 ## Authorization
 
 Only users that match one of the following on a given ticket can
