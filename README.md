@@ -1,5 +1,4 @@
-# Ticket Report & Sign — GLPI 10-12 plugin (key: `glpiticketreportsign`)
-
+# Ticket Report & Sign
 *[Léelo en español](README.es_ES.md)*
 
 Adds a **Report** tab to every Ticket. From that tab the assigned
