@@ -42,20 +42,6 @@ git clone <this-repo> glpiticketreportsign
 
 In **Setup → Plugins**, install + enable **Ticket Report & Sign**.
 
-> Upgrading from the old `ticketreport` key? Replace the old plugin
-> folder with this one (same GLPI `plugins/` directory, new folder
-> name), then click **Install** on the "Ticket Report & Sign" entry
-> that appears — the installer detects the old
-> `glpi_plugin_ticketreport_*` tables and `plugin_ticketreport_*`
-> profile rights and renames them in place, so no reports, signatures
-> or granted permissions are lost. The stale old entry left in the
-> plugins list (pointing at the now-missing `ticketreport/` folder)
-> can be deleted from there afterward.
-
-The plugin creates two tables:
-* `glpi_plugin_glpiticketreportsign_reports` — one row per generated version
-* `glpi_plugin_glpiticketreportsign_signlinks` — outstanding email signing tokens
-
 Both are dropped on uninstall; the underlying Document rows the
 plugin produced are not touched, so previously signed PDFs remain
 attached to their tickets.
@@ -116,10 +102,3 @@ glpiticketreportsign/
         ├── Authorizer.php          # per-ticket "assigned tech / supervisor"
         └── SigningToken.php        # HMAC-signed, single-use email tokens
 ```
-
-`Report` and `TicketTab` ship as two leaf files each because GLPI 12 typed
-`CommonDBTM`/`CommonGLPI`'s static `$rightname` as `string` (untyped in
-GLPI 10/11); PHP requires a child class redeclaring it to match the
-parent's type exactly, so a single file can't satisfy both. `setup.php`'s
-autoloader picks the matching leaf at runtime via reflection — see
-https://github.com/glpi-project/glpi/issues/25399.
