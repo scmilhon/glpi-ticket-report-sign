@@ -1,4 +1,4 @@
-# Ticket Report & Sign — plugin para GLPI 10-12 (clave: `glpiticketreportsign`)
+# Ticket Report & Sign
 
 *[Read this in English](README.md)*
 
