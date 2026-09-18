@@ -1,0 +1,51 @@
+.glpiticketreportsign-tab .glpiticketreportsign-pad-wrap {
+    position: relative;
+}
+.glpiticketreportsign-tab canvas#trSignaturePad {
+    width: 100%;
+    height: 180px;
+    background: #fff;
+    touch-action: none;
+}
+.glpiticketreportsign-tab table tbody tr td.text-end .btn {
+    white-space: nowrap;
+}
+
+/*
+ * Status badges in the versions list. Bootstrap's default badge is
+ * too small (font-size 0.75em) and its bg-info/bg-warning render as
+ * light pastels which kill contrast against white text. We force a
+ * legible size and let stateBadge() pick text-dark for light pills.
+ */
+.glpiticketreportsign-tab .badge {
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 0.4em 0.7em;
+    letter-spacing: 0.01em;
+}
+.glpiticketreportsign-tab .badge.bg-info {
+    background-color: #cfe8ff !important;
+    color: #084298 !important;
+}
+.glpiticketreportsign-tab .badge.bg-warning {
+    background-color: #ffe69c !important;
+    color: #664d03 !important;
+}
+.glpiticketreportsign-tab .badge.bg-success {
+    color: #fff !important;
+}
+
+/*
+ * GLPI 10's admin/plugin-config page wrapper squeezes some block
+ * children down to a tiny intrinsic width (reproduced as a computed
+ * `width: 1%` in devtools, independent of the child's own tag —
+ * happens to both <p> and <div>), so descriptive text wraps one word
+ * per line. Not present on GLPI 11/12. `!important` because we don't
+ * control (and can't reliably target) whatever ancestor rule causes
+ * it — this only ever applies to our own hint blocks below.
+ */
+.trs-text {
+    display: block !important;
+    width: 100% !important;
+    flex: 1 1 auto !important;
+}

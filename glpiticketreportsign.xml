@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+    <name>Ticket Report &amp; Sign</name>
+    <key>glpiticketreportsign</key>
+    <state>stable</state>
+    <logo></logo>
+    <description>
+        <short>
+            <lang id="en">Generate per-ticket PDF reports with follow-ups, solutions, embedded images and a hand-drawn technician signature.</lang>
+            <lang id="es">Genera informes PDF por ticket con seguimientos, soluciones, imágenes incrustadas y firma manuscrita del técnico.</lang>
+        </short>
+    </description>
+    <homepage>https://github.com/scmilhon/glpi-ticket-report-sign</homepage>
+    <download></download>
+    <issues></issues>
+    <readme></readme>
+    <authors>
+        <author>@scmilhon</author>
+    </authors>
+    <versions>
+        <version>
+            <num>0.0.8</num>
+            <compatibility>~10.0||~11.0||~12.0</compatibility>
+        </version>
+    </versions>
+    <langs>
+        <lang>en_GB</lang>
+        <lang>es_ES</lang>
+    </langs>
+    <license>GPLv3</license>
+    <tags>
+        <en><tag>ticket</tag><tag>pdf</tag><tag>signature</tag><tag>report</tag></en>
+        <es><tag>ticket</tag><tag>pdf</tag><tag>firma</tag><tag>informe</tag></es>
+    </tags>
+</root>

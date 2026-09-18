@@ -1,0 +1,43 @@
+name: Release
+
+# Fires when you push a tag like v2.0.0. That's the only trigger — a
+# normal commit/push to a branch never creates a release.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read version from the tag
+        id: ver
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+      # The zip's top-level folder MUST be named exactly
+      # "glpiticketreportsign" — GLPI derives the plugin key from the
+      # directory name once someone unzips this into their plugins/
+      # folder, so anything else breaks the install.
+      - name: Build plugin zip
+        run: |
+          mkdir -p /tmp/build/glpiticketreportsign
+          rsync -a --exclude='.git' --exclude='.github' ./ /tmp/build/glpiticketreportsign/
+          cd /tmp/build
+          zip -r "$GITHUB_WORKSPACE/glpiticketreportsign-${{ steps.ver.outputs.version }}.zip" glpiticketreportsign
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          generate_release_notes: true
+          files: glpiticketreportsign-${{ steps.ver.outputs.version }}.zip

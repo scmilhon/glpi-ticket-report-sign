@@ -1,0 +1,15 @@
+{
+    "name": "glpi-plugins/glpiticketreportsign",
+    "description": "GLPI 10-12 plugin: per-ticket PDF report with embedded follow-ups, solutions and a hand-drawn signature.",
+    "type": "glpi-plugin",
+    "license": "GPL-3.0-only",
+    "require": {
+        "php": ">=8.2",
+        "ext-gd": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "GlpiPlugin\\Glpiticketreportsign\\": "src/"
+        }
+    }
+}

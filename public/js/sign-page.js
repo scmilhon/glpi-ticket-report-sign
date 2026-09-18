@@ -1,0 +1,112 @@
+/* Public signing page logic — vendor-free.
+ * Tiny canvas pad implementation; the report PDF is provided via a
+ * "View report" link that opens in a new tab rather than rendered
+ * with pdf.js.
+ */
+(() => {
+  'use strict';
+  const cfg = window.TicketReportSign;
+  if (!cfg) return;
+
+  const sigCanvas = document.getElementById('sig');
+  const msg       = document.getElementById('msg');
+
+  const setMsg = (t, ok) => {
+    msg.textContent = t || '';
+    msg.style.color = ok ? '#080' : '#a00';
+  };
+
+  function makePad(canvas) {
+    const ratio = window.devicePixelRatio || 1;
+    const rect  = canvas.getBoundingClientRect();
+    canvas.width  = Math.max(1, Math.floor(rect.width  * ratio));
+    canvas.height = Math.max(1, Math.floor(rect.height * ratio));
+    const ctx = canvas.getContext('2d');
+    ctx.scale(ratio, ratio);
+    ctx.lineWidth   = 2;
+    ctx.lineCap     = 'round';
+    ctx.lineJoin    = 'round';
+    ctx.strokeStyle = '#111';
+
+    let drawing = false;
+    let empty   = true;
+    let last    = null;
+
+    const pos = (e) => {
+      const r = canvas.getBoundingClientRect();
+      return { x: e.clientX - r.left, y: e.clientY - r.top };
+    };
+    const start = (e) => {
+      if (e.button !== undefined && e.button !== 0) return;
+      e.preventDefault();
+      drawing = true; empty = false;
+      last = pos(e);
+      ctx.beginPath();
+      ctx.moveTo(last.x, last.y);
+      ctx.lineTo(last.x + 0.1, last.y + 0.1);
+      ctx.stroke();
+      try { canvas.setPointerCapture(e.pointerId); } catch (_e) {}
+    };
+    const move = (e) => {
+      if (!drawing) return;
+      e.preventDefault();
+      const p = pos(e);
+      ctx.beginPath();
+      ctx.moveTo(last.x, last.y);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+      last = p;
+    };
+    const end = (e) => {
+      if (!drawing) return;
+      drawing = false;
+      try { canvas.releasePointerCapture(e.pointerId); } catch (_e) {}
+    };
+
+    canvas.addEventListener('pointerdown',   start);
+    canvas.addEventListener('pointermove',   move);
+    canvas.addEventListener('pointerup',     end);
+    canvas.addEventListener('pointercancel', end);
+    canvas.addEventListener('pointerleave',  (e) => { if (drawing) end(e); });
+
+    return {
+      isEmpty:   () => empty,
+      clear:     () => {
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.restore();
+        empty = true;
+      },
+      toDataURL: () => canvas.toDataURL('image/png'),
+    };
+  }
+
+  const pad = makePad(sigCanvas);
+
+  document.getElementById('clearSig').addEventListener('click', () => pad.clear());
+
+  document.getElementById('submitSig').addEventListener('click', async () => {
+    if (pad.isEmpty()) {
+      setMsg('Por favor, dibuje su firma.');
+      return;
+    }
+    const fd = new FormData();
+    fd.append('reports_id',  String(cfg.reportId));
+    fd.append('signature',   pad.toDataURL());
+    fd.append('signer_name', (document.getElementById('signerName').value || '').trim());
+    fd.append('token',       cfg.token);
+    try {
+      const res  = await fetch(cfg.submitUrl, { method: 'POST', body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        setMsg((data && data.error) || 'No se pudo guardar la firma.');
+        return;
+      }
+      setMsg('Firma guardada. Puede cerrar esta página.', true);
+      document.getElementById('submitSig').disabled = true;
+    } catch (e) {
+      setMsg('Error de red: ' + e.message);
+    }
+  });
+})();

@@ -1,0 +1,477 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: glpiticketreportsign 1.5.1\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: en_GB\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Report"
+msgid_plural "Reports"
+msgstr[0] "Report"
+msgstr[1] "Reports"
+
+msgid "Ticket report"
+msgstr "Ticket report"
+
+msgid "Ticket reports"
+msgstr "Ticket reports"
+
+msgid "Loading preview…"
+msgstr "Loading preview…"
+
+msgid "Latest version (v%d)"
+msgstr "Latest version (v%d)"
+
+msgid "All versions (%d)"
+msgstr "All versions (%d)"
+
+msgid "State"
+msgstr "State"
+
+msgid "Tech signature"
+msgstr "Tech signature"
+
+msgid "Client signature"
+msgstr "Client signature"
+
+msgid "Signed"
+msgstr "Signed"
+
+msgid "Draft"
+msgstr "Draft"
+
+msgid "Awaiting client signature"
+msgstr "Awaiting client signature"
+
+msgid "Awaiting technician signature"
+msgstr "Awaiting technician signature"
+
+msgid "Pending client"
+msgstr "Pending client"
+
+msgid "Pending technician"
+msgstr "Pending technician"
+
+msgid "Pending client signature"
+msgstr "Pending client signature"
+
+msgid "Pending technician signature"
+msgstr "Pending technician signature"
+
+msgid "Signed by"
+msgstr "Signed by"
+
+msgid "Generate / refresh"
+msgstr "Generate / refresh"
+
+msgid "Sign"
+msgstr "Sign"
+
+msgid "Sign report"
+msgstr "Sign report"
+
+msgid "Sign and save"
+msgstr "Sign and save"
+
+msgid "Save technician signature"
+msgstr "Save technician signature"
+
+msgid "Save client signature"
+msgstr "Save client signature"
+
+msgid "Email to client"
+msgstr "Email to client"
+
+msgid "Email"
+msgstr "Email"
+
+msgid "Send by email"
+msgstr "Send by email"
+
+msgid "Send signing link"
+msgstr "Send signing link"
+
+msgid "Send signing link by email"
+msgstr "Send signing link by email"
+
+msgid "Send link"
+msgstr "Send link"
+
+msgid "Recipient email"
+msgstr "Recipient email"
+
+msgid "Download"
+msgstr "Download"
+
+msgid "Download PDF"
+msgstr "Download PDF"
+
+msgid "View PDF"
+msgstr "View PDF"
+
+msgid "Open the report and sign"
+msgstr "Open the report and sign"
+
+msgid "Back to ticket"
+msgstr "Back to ticket"
+
+msgid "Clear"
+msgstr "Clear"
+
+msgid "Draw signature"
+msgstr "Draw signature"
+
+msgid "Name"
+msgstr "Name"
+
+msgid "Signer name"
+msgstr "Signer name"
+
+msgid "Full name"
+msgstr "Full name"
+
+msgid "Technician"
+msgstr "Technician"
+
+msgid "Client"
+msgstr "Client"
+
+msgid "Already signed"
+msgstr "Already signed"
+
+msgid "Currently signed by: %s. Drawing a new signature will replace it."
+msgstr "Currently signed by: %s. Drawing a new signature will replace it."
+
+msgid "Not signed"
+msgstr "Not signed"
+
+msgid "unknown"
+msgstr "unknown"
+
+msgid "Ticket #%d — version %d"
+msgstr "Ticket #%d — version %d"
+
+msgid "Review the report before signing:"
+msgstr "Review the report before signing:"
+
+msgid "No report generated yet for this ticket."
+msgstr "No report generated yet for this ticket."
+
+msgid "Only the assigned technician or their supervisor can generate the report."
+msgstr "Only the assigned technician or their supervisor can generate the report."
+
+msgid "Your profile does not have access to ticket reports."
+msgstr "Your profile does not have access to ticket reports."
+
+msgid "This ticket is closed. Existing reports can still be downloaded and signed, but no new versions can be generated."
+msgstr "This ticket is closed. Existing reports can still be downloaded and signed, but no new versions can be generated."
+
+msgid "Closed tickets cannot have new report versions."
+msgstr "Closed tickets cannot have new report versions."
+
+msgid "Sign report for ticket #%d"
+msgstr "Sign report for ticket #%d"
+
+msgid "You have been asked to sign a service report."
+msgstr "You have been asked to sign a service report."
+
+msgid "This link is single-use and expires in 7 days."
+msgstr "This link is single-use and expires in 7 days."
+
+msgid "Plugin access"
+msgstr "Plugin access"
+
+msgid "Edit document styles"
+msgstr "Edit document styles"
+
+msgid "You do not have permission to edit profile rights."
+msgstr "You do not have permission to edit profile rights."
+
+msgid "Permissions updated."
+msgstr "Permissions updated."
+
+msgid "Invalid profile."
+msgstr "Invalid profile."
+
+msgid "Ticket report styles"
+msgstr "Ticket report styles"
+
+msgid "Document styles"
+msgstr "Document styles"
+
+msgid "Customize the header, footer, colours, disclaimer and draft retention used when generating ticket report PDFs."
+msgstr "Customize the header, footer, colours, disclaimer and draft retention used when generating ticket report PDFs."
+
+msgid "Live preview (approximate)"
+msgstr "Live preview (approximate)"
+
+msgid "Not saved — for reference only"
+msgstr "Not saved — for reference only"
+
+msgid "Rough mockup of the PDF header, section bars, disclaimer and footer, updated live as you edit the fields on the left. It is an HTML approximation, not a pixel-perfect match — the real PDF is drawn by FPDF, with different fonts and spacing."
+msgstr "Rough mockup of the PDF header, section bars, disclaimer and footer, updated live as you edit the fields on the left. It is an HTML approximation, not a pixel-perfect match — the real PDF is drawn by FPDF, with different fonts and spacing."
+
+msgid "Nº TICKET"
+msgstr "Nº TICKET"
+
+msgid "Preview not available for this path — the real PDF will still use it."
+msgstr "Preview not available for this path — the real PDF will still use it."
+
+msgid "Header — company info"
+msgstr "Header — company info"
+
+msgid "Where should the header values come from?"
+msgstr "Where should the header values come from?"
+
+msgid "From the ticket entity (recommended) — name, NIT, address, website are read from Setup > Entities."
+msgstr "From the ticket entity (recommended) — name, NIT, address, website are read from Setup > Entities."
+
+msgid "Use the custom values below for every report."
+msgstr "Use the custom values below for every report."
+
+msgid "Company name"
+msgstr "Company name"
+
+msgid "Tax ID (NIT)"
+msgstr "Tax ID (NIT)"
+
+msgid "Address"
+msgstr "Address"
+
+msgid "Website"
+msgstr "Website"
+
+msgid "Logo filename"
+msgstr "Logo filename"
+
+msgid "Resolved against the plugin's pics/ folder. Drop your PNG there. (Used regardless of source.)"
+msgstr "Resolved against the plugin's pics/ folder. Drop your PNG there. (Used regardless of source.)"
+
+msgid "These values appear on every report. None of them are read from the GLPI database — edit them here."
+msgstr "These values appear on every report. None of them are read from the GLPI database — edit them here."
+
+msgid "Logo"
+msgstr "Logo"
+
+msgid "Path to the logo image, relative to the GLPI installation root. Pick one of the logos already present in your GLPI install, or type a custom path."
+msgstr "Path to the logo image, relative to the GLPI installation root. Pick one of the logos already present in your GLPI install, or type a custom path."
+
+msgid "Pick from existing GLPI logos"
+msgstr "Pick from existing GLPI logos"
+
+msgid "— choose to copy into the path field —"
+msgstr "— choose to copy into the path field —"
+
+msgid "Logo path"
+msgstr "Logo path"
+
+msgid "Colours"
+msgstr "Colours"
+
+msgid "Section header background"
+msgstr "Section header background"
+
+msgid "Ticket ID colour (header)"
+msgstr "Ticket ID colour (header)"
+
+msgid "Disclaimer block"
+msgstr "Disclaimer block"
+
+msgid "Printed on its own page near the end of every report, right after the signature block. Leave the body empty to omit this section entirely."
+msgstr "Printed on its own page near the end of every report, right after the signature block. Leave the body empty to omit this section entirely."
+
+msgid "Title"
+msgstr "Title"
+
+msgid "Short heading printed in the grey section bar above the body — e.g. your policy's name (\"CUSTOMER-INDUCED DAMAGE\", \"LIMITED WARRANTY TERMS\"...)."
+msgstr "Short heading printed in the grey section bar above the body — e.g. your policy's name (\"CUSTOMER-INDUCED DAMAGE\", \"LIMITED WARRANTY TERMS\"...)."
+
+msgid "Body"
+msgstr "Body"
+
+msgid "Full legal text of your warranty/liability disclaimer, printed as-is (line breaks are kept). This plugin ships with no default wording — write (or paste) your own; it is only ever saved here, in your database, never in the plugin's code."
+msgstr "Full legal text of your warranty/liability disclaimer, printed as-is (line breaks are kept). This plugin ships with no default wording — write (or paste) your own; it is only ever saved here, in your database, never in the plugin's code."
+
+msgid "Footer & retention"
+msgstr "Footer & retention"
+
+msgid "Footer text"
+msgstr "Footer text"
+
+msgid "Placeholders: {page} = current page, {pages} = total pages."
+msgstr "Placeholders: {page} = current page, {pages} = total pages."
+
+msgid "Draft retention (days)"
+msgstr "Draft retention (days)"
+
+msgid "Unsigned drafts older than this many days are deleted by the daily cron."
+msgstr "Unsigned drafts older than this many days are deleted by the daily cron."
+
+msgid "Your profile only has read access to these settings."
+msgstr "Your profile only has read access to these settings."
+
+msgid "Document styles saved."
+msgstr "Document styles saved."
+
+msgid "Ticket Report & Sign"
+msgstr "Ticket Report & Sign"
+
+msgid "Report generated."
+msgstr "Report generated."
+
+msgid "Failed to generate report:"
+msgstr "Failed to generate report:"
+
+msgid "Report not found"
+msgstr "Report not found"
+
+msgid "Document missing"
+msgstr "Document missing"
+
+msgid "File missing on disk"
+msgstr "File missing on disk"
+
+msgid "Ticket not found"
+msgstr "Ticket not found"
+
+msgid "Missing ticket id"
+msgstr "Missing ticket id"
+
+msgid "Missing signature side."
+msgstr "Missing signature side."
+
+msgid "No technician signature received."
+msgstr "No technician signature received."
+
+msgid "No client signature received."
+msgstr "No client signature received."
+
+msgid "Technician signature saved."
+msgstr "Technician signature saved."
+
+msgid "Client signature saved."
+msgstr "Client signature saved."
+
+msgid "Failed to save signature:"
+msgstr "Failed to save signature:"
+
+msgid "Cannot generate a report on a closed ticket."
+msgstr "Cannot generate a report on a closed ticket."
+
+msgid "You are not authorized to generate the report for this ticket."
+msgstr "You are not authorized to generate the report for this ticket."
+
+msgid "Your profile does not have permission to generate reports."
+msgstr "Your profile does not have permission to generate reports."
+
+msgid "Your profile does not have permission to sign reports."
+msgstr "Your profile does not have permission to sign reports."
+
+msgid "Your profile does not have permission to send signing emails."
+msgstr "Your profile does not have permission to send signing emails."
+
+msgid "Invalid email address."
+msgstr "Invalid email address."
+
+msgid "Signing link sent."
+msgstr "Signing link sent."
+
+msgid "Failed to send email:"
+msgstr "Failed to send email:"
+
+msgid "Ticket Report & Sign: clean abandoned drafts"
+msgstr "Ticket Report & Sign: clean abandoned drafts"
+
+msgid "Remove draft reports (no signatures) older than 15 days, including their PDF on disk."
+msgstr "Remove draft reports (no signatures) older than 15 days, including their PDF on disk."
+
+msgid "Plugin"
+msgstr "Plugin"
+
+msgid "System"
+msgstr "System"
+
+msgid "Follow-ups"
+msgstr "Follow-ups"
+
+msgid "Solutions"
+msgstr "Solutions"
+
+msgid "Signature"
+msgstr "Signature"
+
+msgid "Requester"
+msgstr "Requester"
+
+msgid "Assigned to"
+msgstr "Assigned to"
+
+msgid "Attachments"
+msgstr "Attachments"
+
+msgid "Report is already signed."
+msgstr "Report is already signed."
+
+msgid "Solution type"
+msgstr "Solution type"
+
+msgid "Locked until technician signs"
+msgstr "Locked until technician signs"
+
+msgid "The client can only sign after the technician has signed the report."
+msgstr "The client can only sign after the technician has signed the report."
+
+msgid "Loading signature pad…"
+msgstr "Loading signature pad…"
+
+msgid "Solution recorded. A draft report was generated automatically."
+msgstr "Solution recorded. A draft report was generated automatically."
+
+msgid "Report #%d"
+msgstr "Report #%d"
+
+msgid "MTTO's"
+msgstr "MTTO's"
+
+msgid "MTTO report"
+msgstr "MTTO report"
+
+msgid "Pick the computer the maintenance report is for — ticket #%d"
+msgstr "Pick the computer the maintenance report is for — ticket #%d"
+
+msgid "Serial number, name, alternate serial…"
+msgstr "Serial number, name, alternate serial…"
+
+msgid "Search"
+msgstr "Search"
+
+msgid "Type a serial number above to find computers in the GLPI asset inventory."
+msgstr "Type a serial number above to find computers in the GLPI asset inventory."
+
+msgid "No computer matches \"%s\"."
+msgstr "No computer matches \"%s\"."
+
+msgid "Serial number"
+msgstr "Serial number"
+
+msgid "Computer not found"
+msgstr "Computer not found"
+
+msgid "MTTO report generated."
+msgstr "MTTO report generated."
+
+msgid "Available once the ticket is resolved with solution type \"Mantenimiento Preventivo\"."
+msgstr "Available once the ticket is resolved with solution type \"Mantenimiento Preventivo\"."
+
+msgid "Use the MTTO button — this ticket is flagged as Mantenimiento Preventivo."
+msgstr "Use the MTTO button — this ticket is flagged as Mantenimiento Preventivo."
+
+msgid "Sign as client"
+msgstr "Sign as client"
+
+msgid "Clients can only sign the client side."
+msgstr "Clients can only sign the client side."
+
+msgid "Select"
+msgstr "Select"

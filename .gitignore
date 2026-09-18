@@ -1,0 +1,17 @@
+# OS / editor junk
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+
+# Top-level composer install output. The plugin's own composer.json
+# has no real runtime dependencies (just metadata + PSR-4 autoload) —
+# nothing here needs to be committed. Do NOT add this rule for
+# pdf/ or qrcode/vendor/: those are vendored on purpose and must stay
+# tracked (see README "Layout").
+/vendor/
+
+# Local logs, if anything ever writes here during dev testing.
+*.log

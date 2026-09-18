@@ -1,0 +1,14 @@
+Place the following files here (download from official sources):
+
+  pdf.min.js                — pdf.js distribution (mozilla/pdf.js, build/pdf.min.js)
+  pdf.worker.min.js         — pdf.js worker (build/pdf.worker.min.js)
+  signature_pad.umd.min.js  — szimek/signature_pad UMD build
+
+Versions tested:
+  pdf.js 4.x
+  signature_pad 5.x
+
+Why vendored: GLPI installations can run on isolated networks where
+CDN access is blocked. Loading from the plugin's own public/vendor
+keeps the feature offline-friendly. If you prefer CDNs, edit the
+vendor URLs in src/Integration/TicketTab.php and front/sign.php.

@@ -1,0 +1,497 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: glpiticketreportsign 1.5.1\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: es_ES\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+# --- Plurals ------------------------------------------------------
+
+msgid "Report"
+msgid_plural "Reports"
+msgstr[0] "Informe"
+msgstr[1] "Informes"
+
+# --- Tabs / generic labels ---------------------------------------
+
+msgid "Ticket report"
+msgstr "Informe del ticket"
+
+msgid "Ticket reports"
+msgstr "Informes de tickets"
+
+msgid "Loading preview…"
+msgstr "Cargando previsualización…"
+
+msgid "Latest version (v%d)"
+msgstr "Última versión (v%d)"
+
+msgid "All versions (%d)"
+msgstr "Todas las versiones (%d)"
+
+msgid "State"
+msgstr "Estado"
+
+msgid "Tech signature"
+msgstr "Firma del técnico"
+
+msgid "Client signature"
+msgstr "Firma del cliente"
+
+msgid "Signed"
+msgstr "Firmado"
+
+msgid "Draft"
+msgstr "Borrador"
+
+msgid "Awaiting client signature"
+msgstr "Pendiente de la firma del cliente"
+
+msgid "Awaiting technician signature"
+msgstr "Pendiente de la firma del técnico"
+
+msgid "Pending client"
+msgstr "Falta cliente"
+
+msgid "Pending technician"
+msgstr "Falta técnico"
+
+msgid "Pending client signature"
+msgstr "Pendiente firma cliente"
+
+msgid "Pending technician signature"
+msgstr "Pendiente firma técnico"
+
+msgid "Signed by"
+msgstr "Firmado por"
+
+# --- Action buttons ----------------------------------------------
+
+msgid "Generate / refresh"
+msgstr "Generar / actualizar"
+
+msgid "Sign"
+msgstr "Firmar"
+
+msgid "Sign report"
+msgstr "Firmar informe"
+
+msgid "Sign and save"
+msgstr "Firmar y guardar"
+
+msgid "Save technician signature"
+msgstr "Guardar firma del técnico"
+
+msgid "Save client signature"
+msgstr "Guardar firma del cliente"
+
+msgid "Email to client"
+msgstr "Enviar al cliente por correo"
+
+msgid "Email"
+msgstr "Correo"
+
+msgid "Send by email"
+msgstr "Enviar por correo"
+
+msgid "Send signing link"
+msgstr "Enviar enlace de firma"
+
+msgid "Send signing link by email"
+msgstr "Enviar enlace de firma por correo"
+
+msgid "Send link"
+msgstr "Enviar enlace"
+
+msgid "Recipient email"
+msgstr "Correo del destinatario"
+
+msgid "Download"
+msgstr "Descargar"
+
+msgid "Download PDF"
+msgstr "Descargar PDF"
+
+msgid "View PDF"
+msgstr "Ver PDF"
+
+msgid "Open the report and sign"
+msgstr "Abrir el informe y firmar"
+
+msgid "Back to ticket"
+msgstr "Volver al ticket"
+
+msgid "Clear"
+msgstr "Borrar"
+
+msgid "Draw signature"
+msgstr "Dibujar firma"
+
+msgid "Name"
+msgstr "Nombre"
+
+msgid "Signer name"
+msgstr "Nombre del firmante"
+
+msgid "Full name"
+msgstr "Nombre completo"
+
+msgid "Technician"
+msgstr "Técnico"
+
+msgid "Client"
+msgstr "Cliente"
+
+msgid "Already signed"
+msgstr "Ya firmado"
+
+msgid "Currently signed by: %s. Drawing a new signature will replace it."
+msgstr "Firmado actualmente por: %s. Si dibuja una nueva firma, se reemplazará."
+
+msgid "Not signed"
+msgstr "Sin firmar"
+
+msgid "unknown"
+msgstr "desconocido"
+
+# --- Status / informational --------------------------------------
+
+msgid "Ticket #%d — version %d"
+msgstr "Ticket nº %d — versión %d"
+
+msgid "Review the report before signing:"
+msgstr "Revise el informe antes de firmar:"
+
+msgid "No report generated yet for this ticket."
+msgstr "Aún no se ha generado ningún informe para este ticket."
+
+msgid "Only the assigned technician or their supervisor can generate the report."
+msgstr "Solo el técnico asignado o su responsable pueden generar el informe."
+
+msgid "Your profile does not have access to ticket reports."
+msgstr "Su perfil no tiene acceso a los informes de tickets."
+
+msgid "This ticket is closed. Existing reports can still be downloaded and signed, but no new versions can be generated."
+msgstr "Este ticket está cerrado. Los informes existentes pueden descargarse y firmarse, pero no se pueden generar nuevas versiones."
+
+msgid "Closed tickets cannot have new report versions."
+msgstr "Los tickets cerrados no admiten nuevas versiones del informe."
+
+# --- Email body --------------------------------------------------
+
+msgid "Sign report for ticket #%d"
+msgstr "Firmar el informe del ticket nº %d"
+
+msgid "You have been asked to sign a service report."
+msgstr "Se le ha solicitado firmar un informe de servicio."
+
+msgid "This link is single-use and expires in 7 days."
+msgstr "Este enlace es de un solo uso y caduca a los 7 días."
+
+# --- Permissions / profile ---------------------------------------
+
+msgid "Plugin access"
+msgstr "Acceso al complemento"
+
+msgid "Edit document styles"
+msgstr "Editar estilos del documento"
+
+msgid "You do not have permission to edit profile rights."
+msgstr "No tiene permiso para editar los permisos del perfil."
+
+msgid "Permissions updated."
+msgstr "Permisos actualizados."
+
+msgid "Invalid profile."
+msgstr "Perfil no válido."
+
+# --- Document styles screen --------------------------------------
+
+msgid "Ticket report styles"
+msgstr "Estilos del informe de ticket"
+
+msgid "Document styles"
+msgstr "Estilos del documento"
+
+msgid "Customize the header, footer, colours, disclaimer and draft retention used when generating ticket report PDFs."
+msgstr "Personalice la cabecera, el pie, los colores, el aviso legal y la retención de borradores usados al generar los PDF de los informes."
+
+msgid "Live preview (approximate)"
+msgstr "Vista previa en vivo (aproximada)"
+
+msgid "Not saved — for reference only"
+msgstr "No se guarda — solo de referencia"
+
+msgid "Rough mockup of the PDF header, section bars, disclaimer and footer, updated live as you edit the fields on the left. It is an HTML approximation, not a pixel-perfect match — the real PDF is drawn by FPDF, with different fonts and spacing."
+msgstr "Boceto aproximado de la cabecera, las barras de sección, el aviso legal y el pie del PDF, que se actualiza en vivo mientras edita los campos de la izquierda. Es una aproximación en HTML, no una réplica exacta — el PDF real lo dibuja FPDF, con fuentes y espaciados distintos."
+
+msgid "Nº TICKET"
+msgstr "Nº TICKET"
+
+msgid "Preview not available for this path — the real PDF will still use it."
+msgstr "Vista previa no disponible para esta ruta — el PDF real igual la usará."
+
+msgid "Header — company info"
+msgstr "Cabecera — datos de la empresa"
+
+msgid "Where should the header values come from?"
+msgstr "¿De dónde deben tomarse los valores de la cabecera?"
+
+msgid "From the ticket entity (recommended) — name, NIT, address, website are read from Setup > Entities."
+msgstr "Desde la entidad del ticket (recomendado): el nombre, NIF, dirección y sitio web se leen en Configurar > Entidades."
+
+msgid "Use the custom values below for every report."
+msgstr "Usar los valores personalizados de abajo en todos los informes."
+
+msgid "Company name"
+msgstr "Nombre de la empresa"
+
+msgid "Tax ID (NIT)"
+msgstr "NIF / identificador fiscal"
+
+msgid "Address"
+msgstr "Dirección"
+
+msgid "Website"
+msgstr "Sitio web"
+
+msgid "Logo filename"
+msgstr "Nombre del archivo del logo"
+
+msgid "Resolved against the plugin's pics/ folder. Drop your PNG there. (Used regardless of source.)"
+msgstr "Se resuelve en la carpeta pics/ del complemento. Coloque su PNG allí. (Se utiliza con cualquier origen.)"
+
+msgid "These values appear on every report. None of them are read from the GLPI database — edit them here."
+msgstr "Estos valores aparecen en todos los informes. Ninguno se lee de la base de datos de GLPI; edítelos aquí."
+
+msgid "Logo"
+msgstr "Logo"
+
+msgid "Path to the logo image, relative to the GLPI installation root. Pick one of the logos already present in your GLPI install, or type a custom path."
+msgstr "Ruta al archivo del logo, relativa a la raíz de la instalación de GLPI. Elija uno de los logos ya presentes en su GLPI o introduzca una ruta personalizada."
+
+msgid "Pick from existing GLPI logos"
+msgstr "Elegir de los logos existentes de GLPI"
+
+msgid "— choose to copy into the path field —"
+msgstr "— elija para copiar en el campo de ruta —"
+
+msgid "Logo path"
+msgstr "Ruta del logo"
+
+msgid "Colours"
+msgstr "Colores"
+
+msgid "Section header background"
+msgstr "Fondo de las cabeceras de sección"
+
+msgid "Ticket ID colour (header)"
+msgstr "Color del nº de ticket (cabecera)"
+
+msgid "Disclaimer block"
+msgstr "Bloque de aviso legal"
+
+msgid "Printed on its own page near the end of every report, right after the signature block. Leave the body empty to omit this section entirely."
+msgstr "Se imprime en su propia página cerca del final de cada informe, justo después del bloque de firmas. Deje el contenido vacío para omitir esta sección por completo."
+
+msgid "Title"
+msgstr "Título"
+
+msgid "Short heading printed in the grey section bar above the body — e.g. your policy's name (\"CUSTOMER-INDUCED DAMAGE\", \"LIMITED WARRANTY TERMS\"...)."
+msgstr "Encabezado corto que se imprime en la barra gris de sección, encima del contenido — p. ej. el nombre de su política («DAÑO INDUCIDO POR EL CLIENTE», «TÉRMINOS DE GARANTÍA LIMITADA»...)."
+
+msgid "Body"
+msgstr "Contenido"
+
+msgid "Full legal text of your warranty/liability disclaimer, printed as-is (line breaks are kept). This plugin ships with no default wording — write (or paste) your own; it is only ever saved here, in your database, never in the plugin's code."
+msgstr "Texto legal completo de su aviso de garantía/responsabilidad, que se imprime tal cual (se conservan los saltos de línea). Este complemento no trae un texto predeterminado: escriba (o pegue) el suyo; solo se guarda aquí, en su base de datos, nunca en el código del complemento."
+
+msgid "Footer & retention"
+msgstr "Pie y retención"
+
+msgid "Footer text"
+msgstr "Texto del pie"
+
+msgid "Placeholders: {page} = current page, {pages} = total pages."
+msgstr "Comodines: {page} = página actual, {pages} = páginas totales."
+
+msgid "Draft retention (days)"
+msgstr "Retención de borradores (días)"
+
+msgid "Unsigned drafts older than this many days are deleted by the daily cron."
+msgstr "Los borradores sin firmar con más antigüedad que este número de días se eliminan en la tarea diaria."
+
+msgid "Your profile only has read access to these settings."
+msgstr "Su perfil solo tiene acceso de lectura a esta configuración."
+
+msgid "Document styles saved."
+msgstr "Estilos del documento guardados."
+
+msgid "Ticket Report & Sign"
+msgstr "Ticket Report & Sign"
+
+# --- Toast messages from form handlers ---------------------------
+
+msgid "Report generated."
+msgstr "Informe generado."
+
+msgid "Failed to generate report:"
+msgstr "No se ha podido generar el informe:"
+
+msgid "Report not found"
+msgstr "Informe no encontrado"
+
+msgid "Document missing"
+msgstr "Falta el documento"
+
+msgid "File missing on disk"
+msgstr "Falta el archivo en disco"
+
+msgid "Ticket not found"
+msgstr "Ticket no encontrado"
+
+msgid "Missing ticket id"
+msgstr "Falta el identificador del ticket"
+
+msgid "Missing signature side."
+msgstr "Falta indicar qué firma se está guardando."
+
+msgid "No technician signature received."
+msgstr "No se ha recibido la firma del técnico."
+
+msgid "No client signature received."
+msgstr "No se ha recibido la firma del cliente."
+
+msgid "Technician signature saved."
+msgstr "Firma del técnico guardada."
+
+msgid "Client signature saved."
+msgstr "Firma del cliente guardada."
+
+msgid "Failed to save signature:"
+msgstr "No se ha podido guardar la firma:"
+
+msgid "Cannot generate a report on a closed ticket."
+msgstr "No se puede generar un informe sobre un ticket cerrado."
+
+msgid "You are not authorized to generate the report for this ticket."
+msgstr "No tiene autorización para generar el informe de este ticket."
+
+msgid "Your profile does not have permission to generate reports."
+msgstr "Su perfil no tiene permiso para generar informes."
+
+msgid "Your profile does not have permission to sign reports."
+msgstr "Su perfil no tiene permiso para firmar informes."
+
+msgid "Your profile does not have permission to send signing emails."
+msgstr "Su perfil no tiene permiso para enviar correos de firma."
+
+msgid "Invalid email address."
+msgstr "Dirección de correo no válida."
+
+msgid "Signing link sent."
+msgstr "Enlace de firma enviado."
+
+msgid "Failed to send email:"
+msgstr "No se ha podido enviar el correo:"
+
+# --- Cron --------------------------------------------------------
+
+msgid "Ticket Report & Sign: clean abandoned drafts"
+msgstr "Ticket Report & Sign: limpiar borradores abandonados"
+
+msgid "Remove draft reports (no signatures) older than 15 days, including their PDF on disk."
+msgstr "Eliminar los informes en borrador (sin firmas) con más de 15 días, incluido su PDF en disco."
+
+# --- Misc --------------------------------------------------------
+
+msgid "Plugin"
+msgstr "Complemento"
+
+msgid "System"
+msgstr "Sistema"
+
+msgid "Follow-ups"
+msgstr "Seguimientos"
+
+msgid "Solutions"
+msgstr "Soluciones"
+
+msgid "Signature"
+msgstr "Firma"
+
+msgid "Requester"
+msgstr "Solicitante"
+
+msgid "Assigned to"
+msgstr "Asignado a"
+
+msgid "Attachments"
+msgstr "Adjuntos"
+
+msgid "Report is already signed."
+msgstr "El informe ya está firmado."
+
+msgid "Solution type"
+msgstr "Tipo de solución"
+
+msgid "Locked until technician signs"
+msgstr "Bloqueado hasta que firme el técnico"
+
+msgid "The client can only sign after the technician has signed the report."
+msgstr "El cliente solo puede firmar después de que el técnico haya firmado el informe."
+
+msgid "Loading signature pad…"
+msgstr "Cargando el panel de firma…"
+
+msgid "Solution recorded. A draft report was generated automatically."
+msgstr "Solución registrada. Se ha generado un informe en borrador automáticamente."
+
+msgid "Report #%d"
+msgstr "Informe nº %d"
+
+msgid "MTTO's"
+msgstr "MTTO's"
+
+msgid "MTTO report"
+msgstr "Informe de MTTO"
+
+msgid "Pick the computer the maintenance report is for — ticket #%d"
+msgstr "Elija el equipo informático para el informe de mantenimiento — ticket nº %d"
+
+msgid "Serial number, name, alternate serial…"
+msgstr "Nº de serie, nombre, serie alternativa…"
+
+msgid "Search"
+msgstr "Buscar"
+
+msgid "Type a serial number above to find computers in the GLPI asset inventory."
+msgstr "Escriba un nº de serie arriba para buscar equipos en el inventario de GLPI."
+
+msgid "No computer matches \"%s\"."
+msgstr "Ningún equipo coincide con «%s»."
+
+msgid "Serial number"
+msgstr "Nº de serie"
+
+msgid "Computer not found"
+msgstr "Equipo no encontrado"
+
+msgid "MTTO report generated."
+msgstr "Informe de MTTO generado."
+
+msgid "Available once the ticket is resolved with solution type \"Mantenimiento Preventivo\"."
+msgstr "Disponible cuando el ticket esté resuelto con tipo de solución «Mantenimiento Preventivo»."
+
+msgid "Use the MTTO button — this ticket is flagged as Mantenimiento Preventivo."
+msgstr "Use el botón MTTO; este ticket es de tipo «Mantenimiento Preventivo»."
+
+msgid "Sign as client"
+msgstr "Firmar como cliente"
+
+msgid "Clients can only sign the client side."
+msgstr "El cliente solo puede firmar su parte."
+
+msgid "Select"
+msgstr "Seleccionar"
