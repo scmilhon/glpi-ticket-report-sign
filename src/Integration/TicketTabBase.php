@@ -297,17 +297,24 @@ abstract class TicketTabBase extends CommonGLPI
             }
 
             // --- MTTO's --------------------------------------------
-            if ($mttoEnabled) {
-                echo '<a href="' . htmlspecialchars($base . '/front/mtto.form.php?id=' . $ticketId) . '" '
-                   . 'class="btn btn-outline-primary">'
-                   . '<i class="ti ti-tools me-1"></i>' . __('MTTO\'s', 'glpiticketreportsign') . '</a>';
-            } else {
-                $tip = $closed
-                    ? __('Closed tickets cannot have new report versions.', 'glpiticketreportsign')
-                    : __('Available once the ticket is resolved with solution type "Mantenimiento Preventivo".', 'glpiticketreportsign');
-                echo '<button type="button" class="btn btn-outline-secondary" disabled '
-                   . 'title="' . htmlspecialchars($tip, ENT_QUOTES) . '">'
-                   . '<i class="ti ti-tools me-1"></i>' . __('MTTO\'s', 'glpiticketreportsign') . '</button>';
+            // Suspended for this release (Authorizer::MTTO_ENABLED) —
+            // not shown at all, enabled or disabled, rather than a
+            // grayed-out button nobody can use. $mttoEnabled is always
+            // false while the flag is off, so this is the only place
+            // that needs its own explicit check.
+            if (Authorizer::isMttoFeatureEnabled()) {
+                if ($mttoEnabled) {
+                    echo '<a href="' . htmlspecialchars($base . '/front/mtto.form.php?id=' . $ticketId) . '" '
+                       . 'class="btn btn-outline-primary">'
+                       . '<i class="ti ti-tools me-1"></i>' . __('MTTO\'s', 'glpiticketreportsign') . '</a>';
+                } else {
+                    $tip = $closed
+                        ? __('Closed tickets cannot have new report versions.', 'glpiticketreportsign')
+                        : __('Available once the ticket is resolved with solution type "Mantenimiento Preventivo".', 'glpiticketreportsign');
+                    echo '<button type="button" class="btn btn-outline-secondary" disabled '
+                       . 'title="' . htmlspecialchars($tip, ENT_QUOTES) . '">'
+                       . '<i class="ti ti-tools me-1"></i>' . __('MTTO\'s', 'glpiticketreportsign') . '</button>';
+                }
             }
 
             echo '</div>';

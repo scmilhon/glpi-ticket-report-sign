@@ -16,6 +16,25 @@ use Ticket;
 class Authorizer
 {
     /**
+     * Feature flag: MTTO (Mantenimiento Preventivo) reports are
+     * suspended for this release. With this false,
+     * isMaintenanceTicket()/isMaintenanceSolutionType() always report
+     * "not maintenance" — every MTTO-specific branch in the plugin
+     * (the ticket tab's MTTO button, the Generate button's maintenance
+     * lock, the auto-generate-on-solution skip) reads one of those two
+     * methods, so this single flag is enough to take the whole
+     * subsystem out of play without touching those call sites. Flip
+     * back to true to re-enable.
+     */
+    private const MTTO_ENABLED = false;
+
+    /** Whether the MTTO feature is enabled at all — see MTTO_ENABLED. */
+    public static function isMttoFeatureEnabled(): bool
+    {
+        return self::MTTO_ENABLED;
+    }
+
+    /**
      * True when the ticket is in the CLOSED state. Used to gate
      * report generation: once a ticket is closed the report list
      * is read-only.
@@ -44,6 +63,9 @@ class Authorizer
      */
     public static function isMaintenanceTicket(int $ticketId): bool
     {
+        if (!self::MTTO_ENABLED) {
+            return false;
+        }
         global $DB;
         $row = $DB->request([
             'SELECT' => 'st.name',
@@ -79,7 +101,7 @@ class Authorizer
      */
     public static function isMaintenanceSolutionType(int $solutionTypesId): bool
     {
-        if ($solutionTypesId <= 0) {
+        if (!self::MTTO_ENABLED || $solutionTypesId <= 0) {
             return false;
         }
         global $DB;
