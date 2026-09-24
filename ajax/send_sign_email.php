@@ -21,6 +21,15 @@ Session::checkLoginUser();
 if (!empty($_POST['_glpi_csrf_token']) && method_exists(Session::class, 'validateCSRF')) {
     try { Session::validateCSRF($_POST); } catch (\Throwable $e) { /* soft-fail */ }
 }
+// Same predicate as front/email.submit.php, checked first: a caller
+// who fails it gets 'forbidden' regardless of whether the report id
+// it sent even exists, rather than the existence/already-signed
+// checks below answering that for them.
+if (!Profile::hasRight(UPDATE)) {
+    http_response_code(403);
+    echo json_encode(['error' => 'forbidden']);
+    exit;
+}
 
 $reportId  = (int) ($_POST['reports_id'] ?? 0);
 $recipient = trim((string) ($_POST['recipient_email'] ?? ''));
@@ -37,6 +46,11 @@ if (!$report->getFromDB($reportId)) {
     echo json_encode(['error' => 'report not found']);
     exit;
 }
+if (!Authorizer::canActOnTicket((int) $report->fields['tickets_id'])) {
+    http_response_code(403);
+    echo json_encode(['error' => 'forbidden']);
+    exit;
+}
 // Block only when BOTH signatures are present; if only the
 // technician has signed we still want to email the client the
 // signing link.
@@ -45,11 +59,6 @@ $hasClient = !empty($report->fields['signature_client']);
 if ($hasTech && $hasClient) {
     http_response_code(409);
     echo json_encode(['error' => 'already fully signed']);
-    exit;
-}
-if (!Authorizer::canActOnTicket((int) $report->fields['tickets_id'])) {
-    http_response_code(403);
-    echo json_encode(['error' => 'forbidden']);
     exit;
 }
 

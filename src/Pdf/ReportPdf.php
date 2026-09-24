@@ -61,6 +61,62 @@ class ReportPdf
     ) {
     }
 
+    /**
+     * A deterministic fingerprint of everything this mode's rendered
+     * BODY depends on — ticket description, diagnosis, solution(s),
+     * and (full mode) every other follow-up — used to detect "the
+     * ticket's content changed since this signature was captured"
+     * (see ReportStorage's callers) without hashing the rendered PDF
+     * bytes themselves, which are not deterministic across renders of
+     * unchanged content (embedded QR image encoding, FPDF's own
+     * internal object ids/xref offsets). Deliberately excludes the
+     * signature images, the header/QR/logo, and anything cosmetic —
+     * only the substantive content a signer is attesting to.
+     * Mirrors the same is_private exclusion and mode-scoping as the
+     * render*Block() methods above, so it tracks exactly what a
+     * signer could have seen.
+     */
+    public static function contentFingerprint(Ticket $ticket, string $mode): string
+    {
+        global $DB;
+        $ticketId = (int) $ticket->getID();
+        $parts    = [
+            (string) ($ticket->fields['name']    ?? ''),
+            (string) ($ticket->fields['content'] ?? ''),
+        ];
+
+        $diagnosis   = Diagnosis::latestForTicket($ticketId);
+        $diagnosisFupId = (int) ($diagnosis['itilfollowups_id'] ?? 0);
+        if ($diagnosisFupId > 0) {
+            $row = $DB->request([
+                'FROM'  => ITILFollowup::getTable(),
+                'WHERE' => ['id' => $diagnosisFupId, 'is_private' => 0],
+                'LIMIT' => 1,
+            ])->current();
+            $parts[] = is_array($row) ? 'diag:' . $row['id'] . ':' . $row['content'] : '';
+        }
+
+        if ($mode === self::MODE_FULL) {
+            $where = ['itemtype' => 'Ticket', 'items_id' => $ticketId, 'is_private' => 0];
+            if ($diagnosisFupId > 0) {
+                $where[] = ['NOT' => ['id' => $diagnosisFupId]];
+            }
+            foreach ($DB->request(['FROM' => ITILFollowup::getTable(), 'WHERE' => $where, 'ORDER' => 'date ASC']) as $r) {
+                $parts[] = 'fup:' . $r['id'] . ':' . $r['content'];
+            }
+        }
+
+        $solWhere = ['itemtype' => 'Ticket', 'items_id' => $ticketId];
+        if ($mode === self::MODE_CONDENSED && $diagnosis !== null) {
+            $solWhere['id'] = $diagnosis['itilsolutions_id'];
+        }
+        foreach ($DB->request(['FROM' => ITILSolution::getTable(), 'WHERE' => $solWhere, 'ORDER' => 'date_creation ASC']) as $r) {
+            $parts[] = 'sol:' . $r['id'] . ':' . (string) ($r['content'] ?? '') . ':' . (string) ($r['status'] ?? '');
+        }
+
+        return hash('sha256', implode("\x1f", $parts));
+    }
+
     public function render(): string
     {
         $pdf = new TicketReportFpdf('P', 'mm', 'A4');
@@ -265,7 +321,14 @@ class ReportPdf
         global $DB;
         $row = $DB->request([
             'FROM'  => ITILFollowup::getTable(),
-            'WHERE' => ['id' => $diagnosis['itilfollowups_id']],
+            // A private follow-up is core-gated behind the `followup`
+            // SEEPRIVATE right (ITILFollowup::canViewItem()); this
+            // report is later served to the ticket requester and to
+            // anonymous public-token bearers, neither of whom this
+            // plugin ever checks that right for. Excluding is_private
+            // unconditionally — rather than trying to decide per
+            // recipient — is the only shape that can't leak it.
+            'WHERE' => ['id' => $diagnosis['itilfollowups_id'], 'is_private' => 0],
             'LIMIT' => 1,
         ])->current();
         if (!is_array($row)) {
@@ -297,7 +360,12 @@ class ReportPdf
         $diagnosis = Diagnosis::latestForTicket($this->ticket->getID());
         $excludeId = $diagnosis['itilfollowups_id'] ?? 0;
 
-        $where = ['itemtype' => 'Ticket', 'items_id' => $this->ticket->getID()];
+        // Excluded unconditionally, not per recipient — see the same
+        // note in renderDiagnosisBlock(). This report reaches the
+        // ticket requester and anonymous public-token bearers, and
+        // core's own `followup` SEEPRIVATE right is never consulted
+        // by this plugin.
+        $where = ['itemtype' => 'Ticket', 'items_id' => $this->ticket->getID(), 'is_private' => 0];
         if ($excludeId > 0) {
             $where[] = ['NOT' => ['id' => $excludeId]];
         }

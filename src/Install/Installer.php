@@ -414,6 +414,15 @@ class Installer
         // ajax/confirm_signature.php. Null until confirmed; never set
         // at all for a signature the client drew themselves.
         $m->addField($t, 'client_confirmed_at', "datetime", ['after' => 'signed_client_at']);
+        // sha256 of ReportPdf::contentFingerprint() at the moment each
+        // side signed — lets a later re-render (the other side signing,
+        // or a resend) detect that the ticket's substantive content
+        // changed since THIS side attested to it, and discard that
+        // side's now-stale signature instead of silently carrying it
+        // forward onto different content (see front/sign.submit.php
+        // and ajax/sign_submit.php).
+        $m->addField($t, 'content_hash_tech',   "string", ['after' => 'client_confirmed_at',  'value' => null]);
+        $m->addField($t, 'content_hash_client', "string", ['after' => 'content_hash_tech',    'value' => null]);
 
         $signlinks = 'glpi_plugin_glpiticketreportsign_signlinks';
         if ($this->db->tableExists($signlinks)) {

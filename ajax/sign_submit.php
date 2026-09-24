@@ -88,11 +88,32 @@ if ($siblings === []) {
     $siblings = [$report->fields];
 }
 
+// The client is about to attest to content "as signed by the
+// technician" — if the ticket's substantive content changed since
+// the technician actually signed, that precondition no longer holds.
+// A legacy row with no stored hash (signed before this check
+// existed) is trusted as-is. See ReportPdf::contentFingerprint().
+foreach ($siblings as $row) {
+    $rowTechSig  = (string) ($row['signature_tech']    ?? '');
+    $rowTechHash = (string) ($row['content_hash_tech'] ?? '');
+    if ($rowTechSig === '' || $rowTechHash === '') {
+        continue;
+    }
+    $rowMode = (string) ($row['mode'] ?? ReportPdf::MODE_FULL);
+    if ($rowTechHash !== ReportPdf::contentFingerprint($ticket, $rowMode)) {
+        http_response_code(409);
+        echo json_encode(['error' => 'ticket content changed since the technician signed; ask them to sign again']);
+        exit;
+    }
+}
+
 try {
     $now = date('Y-m-d H:i:s');
     foreach ($siblings as $row) {
-        $rowExistingTech   = (string) ($row['signature_tech'] ?? '');
-        $rowExistingTechNm = (string) ($row['signer_name']    ?? '');
+        $rowExistingTech     = (string) ($row['signature_tech']     ?? '');
+        $rowExistingTechNm   = (string) ($row['signer_name']        ?? '');
+        $rowExistingTechHash = (string) ($row['content_hash_tech']  ?? '');
+        $rowMode             = (string) ($row['mode'] ?? ReportPdf::MODE_FULL);
 
         $bytes = (new ReportPdf(
             $ticket,
@@ -100,7 +121,7 @@ try {
             $rowExistingTechNm ?: null,
             $signature,
             $signerNm ?: null,
-            mode: (string) ($row['mode'] ?? ReportPdf::MODE_FULL),
+            mode: $rowMode,
         ))->render();
 
         ReportStorage::save(
@@ -121,6 +142,8 @@ try {
                 // front/sign.submit.php / front/sign.php).
                 'client_confirmed_at'   => $now,
                 'signed_ip'             => $_SERVER['REMOTE_ADDR'] ?? null,
+                'content_hash_tech'     => $rowExistingTech !== '' ? $rowExistingTechHash : null,
+                'content_hash_client'   => ReportPdf::contentFingerprint($ticket, $rowMode),
             ]
         );
     }

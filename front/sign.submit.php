@@ -154,11 +154,38 @@ if ($siblings === []) {
     $siblings = [$report->fields];
 }
 
+// The client is about to attest to content "as signed by the
+// technician" — if the ticket's substantive content changed since
+// the technician actually signed, that precondition no longer holds.
+// Checked up front, for every sibling row, before anything is
+// written: a legacy row with no stored hash (signed before this
+// check existed) is trusted as-is, never blocked. See
+// ReportPdf::contentFingerprint().
+if ($which === 'client') {
+    foreach ($siblings as $row) {
+        $rowTechSig  = (string) ($row['signature_tech']     ?? '');
+        $rowTechHash = (string) ($row['content_hash_tech']  ?? '');
+        if ($rowTechSig === '' || $rowTechHash === '') {
+            continue;
+        }
+        $rowMode = (string) ($row['mode'] ?? ReportPdf::MODE_FULL);
+        if ($rowTechHash !== ReportPdf::contentFingerprint($ticket, $rowMode)) {
+            Session::addMessageAfterRedirect(
+                __('The ticket content changed since the technician signed. Ask them to review and sign again before you continue.', 'glpiticketreportsign'),
+                false,
+                ERROR
+            );
+            Html::back();
+        }
+    }
+}
+
 try {
     $now = date('Y-m-d H:i:s');
     $savedTechSig    = null;
     $savedTechNm     = null;
     $primaryReportId = $reportId; // fallback if no mode=full sibling is found (shouldn't happen)
+    $discardedStaleSignature = false;
 
     foreach ($siblings as $row) {
         $rowId             = (int) $row['id'];
@@ -167,15 +194,37 @@ try {
         $rowExistingClient = (string) ($row['signature_client']   ?? '');
         $rowExistingTechNm = (string) ($row['signer_name']        ?? '');
         $rowExistingClientNm = (string) ($row['signer_client_name'] ?? '');
+        $rowExistingTechHash   = (string) ($row['content_hash_tech']   ?? '');
+        $rowExistingClientHash = (string) ($row['content_hash_client'] ?? '');
+
+        // A signature attests to the ticket's content AS IT WAS at
+        // the moment it was drawn — not to whatever the ticket says
+        // now. Before carrying an already-signed side forward onto a
+        // fresh render, make sure nothing substantive changed under
+        // it since it signed; if it did, that side's signature (and
+        // its confirmation/timestamp) is discarded rather than
+        // silently stamped onto different content. See
+        // ReportPdf::contentFingerprint().
+        $currentHash = ReportPdf::contentFingerprint($ticket, $rowMode);
 
         if ($which === 'tech') {
             $rowFinalTech     = $sigTech;
             $rowFinalTechNm   = $techName !== '' ? $techName : $rowExistingTechNm;
             $rowFinalClient   = $rowExistingClient;
             $rowFinalClientNm = $rowExistingClientNm;
+            $rowFinalClientHash = $rowExistingClientHash;
+            if ($rowFinalClient !== '' && $rowExistingClientHash !== '' && $rowExistingClientHash !== $currentHash) {
+                $rowFinalClient     = '';
+                $rowFinalClientNm   = '';
+                $rowFinalClientHash = '';
+                $discardedStaleSignature = true;
+            }
         } else {
+            // The technician side can't be stale here — the pre-flight
+            // check above already rejected the whole request if it was.
             $rowFinalTech     = $rowExistingTech;
             $rowFinalTechNm   = $rowExistingTechNm;
+            $rowFinalTechHash = $rowExistingTechHash;
             $rowFinalClient   = $sigClient;
             $rowFinalClientNm = $clientName !== '' ? $clientName : $rowExistingClientNm;
         }
@@ -200,8 +249,10 @@ try {
             $primaryReportId = $rowId;
         }
         if ($which === 'tech') {
-            $fields['signed_at']       = $now;
-            $fields['signer_users_id'] = (int) $_SESSION['glpiID'];
+            $fields['signed_at']         = $now;
+            $fields['signer_users_id']   = (int) $_SESSION['glpiID'];
+            $fields['content_hash_tech']   = $currentHash;
+            $fields['content_hash_client'] = $rowFinalClient !== '' ? $rowFinalClientHash : null;
             $savedTechSig = $rowFinalTech;
             $savedTechNm  = $rowFinalTechNm;
         } else {
@@ -215,9 +266,28 @@ try {
             // ($otpVerification above) — there's no more separate
             // post-hoc acknowledgement step to defer to.
             $fields['client_confirmed_at'] = $now;
+            $fields['content_hash_client'] = $currentHash;
+            $fields['content_hash_tech']   = $rowFinalTech !== '' ? $rowFinalTechHash : null;
+        }
+        if ($rowFinalTech === '') {
+            $fields['signed_at']       = null;
+            $fields['signer_users_id'] = 0;
+        }
+        if ($rowFinalClient === '') {
+            $fields['signed_client_at']     = null;
+            $fields['client_confirmed_at']  = null;
+            $fields['signer_client_users_id'] = 0;
         }
 
         ReportStorage::save($ticket, $bytes, Report::STATE_SIGNED, $rowId, $fields);
+    }
+
+    if ($discardedStaleSignature) {
+        Session::addMessageAfterRedirect(
+            __('The ticket content changed since the other party signed — their signature was cleared and needs to be collected again.', 'glpiticketreportsign'),
+            false,
+            WARNING
+        );
     }
 
     // Remember this signature under the acting user so their next

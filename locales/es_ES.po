@@ -612,3 +612,9 @@ msgstr "Verificar"
 
 msgid "Signer name"
 msgstr "Nombre del firmante"
+
+msgid "The ticket content changed since the other party signed — their signature was cleared and needs to be collected again."
+msgstr "El contenido del ticket cambió después de que la otra parte firmó — su firma fue borrada y debe recolectarse de nuevo."
+
+msgid "The ticket content changed since the technician signed. Ask them to review and sign again before you continue."
+msgstr "El contenido del ticket cambió después de que el técnico firmó. Pídale que revise y firme de nuevo antes de continuar."
