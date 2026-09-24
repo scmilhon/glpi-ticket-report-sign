@@ -52,6 +52,29 @@ abstract class ReportRecord extends CommonDBTM
         return $rows;
     }
 
+    /**
+     * All rows sharing one ticket+version — normally one (mode=full)
+     * or two (mode=full and mode=condensed, generated together by
+     * OnSolutionAdded when the ticket has a diagnosis on file).
+     * Signing one report signs the whole group: see front/sign.submit.php
+     * and ajax/sign_submit.php.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public static function rowsForVersion(int $ticketId, int $version): array
+    {
+        global $DB;
+        $rows = [];
+        foreach ($DB->request([
+            'FROM'  => self::getTable(),
+            'WHERE' => ['tickets_id' => $ticketId, 'version' => $version],
+            'ORDER' => 'mode ASC', // deterministic: "condensed" before "full"
+        ]) as $r) {
+            $rows[] = $r;
+        }
+        return $rows;
+    }
+
     public static function nextVersion(int $ticketId): int
     {
         global $DB;

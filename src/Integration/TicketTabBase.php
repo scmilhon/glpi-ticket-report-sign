@@ -2,6 +2,8 @@
 namespace GlpiPlugin\Glpiticketreportsign\Integration;
 
 use CommonGLPI;
+use GlpiPlugin\Glpiticketreportsign\Diagnosis\Diagnosis;
+use GlpiPlugin\Glpiticketreportsign\Pdf\ReportPdf;
 use GlpiPlugin\Glpiticketreportsign\Profile;
 use GlpiPlugin\Glpiticketreportsign\Report;
 use GlpiPlugin\Glpiticketreportsign\Security\Authorizer;
@@ -107,47 +109,105 @@ abstract class TicketTabBase extends CommonGLPI
      */
     private static function renderClientTab(Ticket $ticket): void
     {
-        $reports = Report::listForTicket($ticket->getID());
-        $base    = plugin_glpiticketreportsign_web_dir();
-        $latest  = $reports[0] ?? null;
-        $vendor  = Assets::urls();
+        // A requester must never see a draft — it's not ready to be
+        // shown as "the report" until the technician has signed it.
+        // Filtering here (rather than trusting $reports[0]) is the
+        // fix for a bug where the client saw whatever was generated
+        // most recently, draft or not, whenever it outranked every
+        // signed version by date.
+        $signedReports = array_values(array_filter(
+            Report::listForTicket($ticket->getID()),
+            static fn (array $r): bool => !empty($r['signature_tech'])
+        ));
 
         echo '<div class="glpiticketreportsign-tab p-3">';
         echo '<h4 class="mb-3"><i class="ti ti-file-text me-1"></i>'
            . __('Ticket report', 'glpiticketreportsign') . '</h4>';
 
-        if ($latest === null) {
+        if ($signedReports === []) {
             echo '<div class="alert alert-secondary">'
-               . __('No report generated yet for this ticket.', 'glpiticketreportsign')
+               . __('No report ready for you yet.', 'glpiticketreportsign')
                . '</div>';
             echo '</div>';
             return;
         }
 
-        $rid       = (int) $latest['id'];
-        $hasTech   = !empty($latest['signature_tech']);
-        $hasClient = !empty($latest['signature_client']);
-        $needClient = $hasTech && !$hasClient;
+        // Group by version — a ticket resolved more than once can
+        // have several versions still waiting on the client's
+        // signature, not just the most recent one. Every pending
+        // version gets its own card so none of them are silently
+        // hidden behind the latest.
+        $byVersion = [];
+        foreach ($signedReports as $r) {
+            $byVersion[(int) $r['version']][] = $r;
+        }
+        krsort($byVersion); // newest version first
+
+        // Defines window.__trRenderPreview, used by every card below.
+        self::emitPreviewScript();
+
+        foreach ($byVersion as $version => $rows) {
+            self::renderClientVersionCard($ticket, $version, $rows);
+        }
+
+        echo '</div>';
+    }
+
+    /**
+     * One self-contained card per version: mode switch (when both a
+     * full and condensed sibling exist), preview, download and — if
+     * the client hasn't signed this version yet — a Sign link. Each
+     * card owns its own DOM ids (suffixed by version) and its own
+     * bootstrap script, so any number of pending versions can be
+     * shown on the same page without colliding.
+     *
+     * @param array<int,array<string,mixed>> $rows tech-signed rows for this version
+     */
+    private static function renderClientVersionCard(Ticket $ticket, int $version, array $rows): void
+    {
+        $base    = plugin_glpiticketreportsign_web_dir();
+        $vendor  = Assets::urls();
+        $primary = $rows[0];
+        $rid     = (int) $primary['id'];
+        $needClient = empty($primary['signature_client']);
 
         $pdfUrl  = $base . '/ajax/pdf_bytes.php?id=' . $rid;
         $dlUrl   = $base . '/front/download.php?id=' . $rid;
         $signUrl = $base . '/front/sign.form.php?id=' . $rid;
 
+        $wrapId = 'trPreviewWrap' . $version;
+        $selId  = 'trClientModeSelect' . $version;
+        $dlId   = 'trDownloadLink' . $version;
+        $sgId   = 'trSignLink' . $version;
+
         echo '<div class="card mb-3"><div class="card-body">';
         echo '<div class="d-flex align-items-center mb-2 flex-wrap gap-2">';
-        echo '  <strong>' . sprintf(__('Report #%d', 'glpiticketreportsign'), (int) $latest['version']) . '</strong>';
-        echo '  ' . self::stateBadge($latest);
-        echo '  <a href="' . htmlspecialchars($dlUrl) . '" target="_blank" '
-           . 'class="btn btn-sm btn-outline-secondary ms-auto">'
+        echo '  <strong>' . sprintf(__('Report #%d', 'glpiticketreportsign'), $version) . '</strong>';
+        echo '  ' . self::stateBadge($primary);
+        if (count($rows) > 1) {
+            echo '  <select id="' . $selId . '" class="form-select form-select-sm" style="width:auto">';
+            foreach ($rows as $sib) {
+                $sibMode  = (string) ($sib['mode'] ?? \GlpiPlugin\Glpiticketreportsign\Pdf\ReportPdf::MODE_FULL);
+                $sibLabel = $sibMode === \GlpiPlugin\Glpiticketreportsign\Pdf\ReportPdf::MODE_CONDENSED
+                    ? __('Condensed version', 'glpiticketreportsign')
+                    : __('Full version', 'glpiticketreportsign');
+                echo '    <option value="' . (int) $sib['id'] . '"'
+                   . ((int) $sib['id'] === $rid ? ' selected' : '') . '>'
+                   . htmlspecialchars($sibLabel, ENT_QUOTES) . '</option>';
+            }
+            echo '  </select>';
+        }
+        echo '  <a href="' . htmlspecialchars($dlUrl) . '" target="_blank" id="' . $dlId . '"'
+           . ' class="btn btn-sm btn-outline-secondary ms-auto">'
            . '<i class="ti ti-download me-1"></i>' . __('Download PDF', 'glpiticketreportsign') . '</a>';
         if ($needClient) {
-            echo '  <a href="' . htmlspecialchars($signUrl) . '" '
-               . 'class="btn btn-sm btn-primary">'
+            echo '  <a href="' . htmlspecialchars($signUrl) . '" id="' . $sgId . '"'
+               . ' class="btn btn-sm btn-primary">'
                . '<i class="ti ti-signature me-1"></i>' . __('Sign as client', 'glpiticketreportsign') . '</a>';
         }
         echo '</div>';
 
-        echo '<div id="trPreviewWrap" '
+        echo '<div id="' . $wrapId . '" '
            . 'data-pdf-url="' . htmlspecialchars($pdfUrl, ENT_QUOTES) . '" '
            . 'data-pdfjs="'   . htmlspecialchars($vendor['pdfJs'],   ENT_QUOTES) . '" '
            . 'data-pdfworker="' . htmlspecialchars($vendor['pdfWorker'], ENT_QUOTES) . '" '
@@ -155,10 +215,27 @@ abstract class TicketTabBase extends CommonGLPI
            . '<div class="text-muted text-center p-4">' . __('Loading preview…', 'glpiticketreportsign') . '</div>'
            . '</div>';
 
-        echo '</div></div></div>';
+        echo '</div></div>';
 
-        // Same inline preview bootstrap as the tech tab.
-        self::emitPreviewScript();
+        echo '<script>(function(){'
+           . '  function boot(){'
+           . '    var wrap = document.getElementById(' . json_encode($wrapId) . ');'
+           . '    if (!wrap || !window.__trRenderPreview) { setTimeout(boot, 100); return; }'
+           . '    window.__trRenderPreview(wrap, wrap.dataset.pdfUrl);'
+           . '    var sel = document.getElementById(' . json_encode($selId) . ');'
+           . '    if (!sel) return;'
+           . '    var dl = document.getElementById(' . json_encode($dlId) . ');'
+           . '    var sg = document.getElementById(' . json_encode($sgId) . ');'
+           . '    var base = ' . json_encode($base) . ';'
+           . '    sel.addEventListener("change", function(){'
+           . '      var id = sel.value;'
+           . '      if (dl) dl.href = base + "/front/download.php?id=" + id;'
+           . '      if (sg) sg.href = base + "/front/sign.form.php?id=" + id;'
+           . '      window.__trRenderPreview(wrap, base + "/ajax/pdf_bytes.php?id=" + id);'
+           . '    });'
+           . '  }'
+           . '  boot();'
+           . '})();</script>';
     }
 
     private static function renderTab(Ticket $ticket): void
@@ -197,9 +274,16 @@ abstract class TicketTabBase extends CommonGLPI
 
             // --- Generate / refresh --------------------------------
             if ($genEnabled) {
-                echo '<form method="post" action="' . htmlspecialchars($generateUrl) . '" style="display:inline">';
+                $hasDiagnosis = Diagnosis::latestForTicket($ticketId) !== null;
+                echo '<form method="post" action="' . htmlspecialchars($generateUrl) . '" style="display:inline" class="d-flex align-items-center gap-2">';
                 echo '  <input type="hidden" name="tickets_id" value="' . $ticketId . '">';
                 echo '  <input type="hidden" name="_glpi_csrf_token" value="' . htmlspecialchars($csrf, ENT_QUOTES) . '">';
+                echo '  <select name="mode" class="form-select form-select-sm" style="width:auto"'
+                   . ' title="' . htmlspecialchars(__('Full history or only problem + diagnosis + solution', 'glpiticketreportsign'), ENT_QUOTES) . '">';
+                echo '    <option value="' . ReportPdf::MODE_FULL . '">' . __('Full report', 'glpiticketreportsign') . '</option>';
+                echo '    <option value="' . ReportPdf::MODE_CONDENSED . '"' . ($hasDiagnosis ? '' : ' disabled') . '>'
+                   . __('Condensed (problem + diagnosis + solution)', 'glpiticketreportsign') . '</option>';
+                echo '  </select>';
                 echo '  <button type="submit" class="btn btn-primary">'
                    . '<i class="ti ti-refresh me-1"></i>' . __('Generate / refresh', 'glpiticketreportsign') . '</button>';
                 echo '</form>';
@@ -277,8 +361,13 @@ abstract class TicketTabBase extends CommonGLPI
                . 'class="list-group-item list-group-item-action' . $active . '" '
                . 'data-tr-preview="' . htmlspecialchars($pdfUrl, ENT_QUOTES) . '" '
                . 'data-tr-version="' . (int) $r['version'] . '">';
+            $modeLabel = ((string) ($r['mode'] ?? '')) === \GlpiPlugin\Glpiticketreportsign\Pdf\ReportPdf::MODE_CONDENSED
+                ? __('Condensed', 'glpiticketreportsign')
+                : __('Full', 'glpiticketreportsign');
+
             echo '<div class="d-flex justify-content-between align-items-start mb-1 gap-2">';
-            echo '  <strong>' . sprintf(__('Report #%d', 'glpiticketreportsign'), (int) $r['version']) . '</strong>';
+            echo '  <strong>' . sprintf(__('Report #%d', 'glpiticketreportsign'), (int) $r['version'])
+               . ' — ' . htmlspecialchars($modeLabel, ENT_QUOTES) . '</strong>';
             echo '  ' . $badge;
             echo '</div>';
             echo '<div class="text-muted small mb-2">'
@@ -363,6 +452,7 @@ abstract class TicketTabBase extends CommonGLPI
            . '      wrap.innerHTML = "<div class=\\"alert alert-warning\\">Vista previa no disponible: "+(e.message||e)+"</div>";'
            . '    }'
            . '  }'
+           . '  window.__trRenderPreview = render;' // exposed so the client-tab full/condensed switcher can reuse it
            . '  function wireList(wrap){'
            . '    var list = document.getElementById("trVersionList");'
            . '    if (!list) return;'
@@ -409,6 +499,17 @@ abstract class TicketTabBase extends CommonGLPI
         $cls = 'badge fs-7 text-nowrap';
 
         if ($hasTech && $hasClient) {
+            // client_confirmed_at is now set immediately whenever a
+            // client signature is saved (self-service, or in person
+            // after the signer's own 6-digit code — see
+            // front/sign.submit.php); this warning branch only still
+            // matters for a signature signed before that change, sitting
+            // unconfirmed from the old post-hoc email flow.
+            if (empty($r['client_confirmed_at'])) {
+                return '<span class="' . $cls . ' bg-warning text-dark">'
+                     . '<i class="ti ti-clock me-1"></i>' . __('Signed — client confirmation pending', 'glpiticketreportsign')
+                     . '</span>';
+            }
             return '<span class="' . $cls . ' bg-success">'
                  . '<i class="ti ti-check me-1"></i>' . __('Signed', 'glpiticketreportsign')
                  . '</span>';

@@ -83,9 +83,14 @@ if (Authorizer::isMaintenanceTicket($ticketId)) {
     Html::back();
 }
 
+$mode = (string) ($_POST['mode'] ?? ReportPdf::MODE_FULL);
+if (!in_array($mode, [ReportPdf::MODE_FULL, ReportPdf::MODE_CONDENSED], true)) {
+    $mode = ReportPdf::MODE_FULL;
+}
+
 try {
-    $bytes    = (new ReportPdf($ticket))->render();
-    $reportId = ReportStorage::save($ticket, $bytes, Report::STATE_DRAFT);
+    $bytes    = (new ReportPdf($ticket, mode: $mode))->render();
+    $reportId = ReportStorage::save($ticket, $bytes, Report::STATE_DRAFT, mode: $mode);
     Session::addMessageAfterRedirect(
         __('Report generated.', 'glpiticketreportsign'),
         false,

@@ -12,9 +12,12 @@
   const msg       = document.getElementById('msg');
 
   const setMsg = (t, ok) => {
+    if (!msg) return;
     msg.textContent = t || '';
     msg.style.color = ok ? '#080' : '#a00';
   };
+
+  if (!sigCanvas) return; // already-signed (read-only) branch — no pad on this page load
 
   function makePad(canvas) {
     const ratio = window.devicePixelRatio || 1;
@@ -91,20 +94,53 @@
       setMsg('Por favor, dibuje su firma.');
       return;
     }
+    const confirmBox = document.getElementById('clientConfirms');
+    if (confirmBox && !confirmBox.checked) {
+      setMsg('Por favor, confirme que esta firma es suya.');
+      return;
+    }
     const fd = new FormData();
     fd.append('reports_id',  String(cfg.reportId));
     fd.append('signature',   pad.toDataURL());
     fd.append('signer_name', (document.getElementById('signerName').value || '').trim());
     fd.append('token',       cfg.token);
+    fd.append('_glpiticketreportsign_client_confirms', '1');
     try {
-      const res  = await fetch(cfg.submitUrl, { method: 'POST', body: fd });
+      const res  = await fetch(cfg.submitUrl, { method: 'POST', body: fd, headers: { 'X-Glpi-Csrf-Token': cfg.csrfToken || '' } });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) {
         setMsg((data && data.error) || 'No se pudo guardar la firma.');
         return;
       }
-      setMsg('Firma guardada. Puede cerrar esta página.', true);
       document.getElementById('submitSig').disabled = true;
+
+      if (data.token && Array.isArray(data.siblings) && data.siblings.length > 1) {
+        setMsg('Firma guardada.', true);
+        const chooseBox = document.getElementById('chooseVersion');
+        if (chooseBox) {
+          chooseBox.style.display = 'block';
+          chooseBox.querySelectorAll('.chooseBtn').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+              chooseBox.querySelectorAll('.chooseBtn').forEach((b) => { b.disabled = true; });
+              try {
+                const cfd = new FormData();
+                cfd.append('token', data.token);
+                cfd.append('reports_id', btn.dataset.reportsId);
+                const cres = await fetch(cfg.chooseUrl, { method: 'POST', body: cfd, headers: { 'X-Glpi-Csrf-Token': cfg.csrfToken || '' } });
+                const cdata = await cres.json().catch(() => ({}));
+                setMsg(cres.ok && cdata.ok
+                  ? 'Firma guardada. Le enviamos esa versión por correo.'
+                  : 'Firma guardada, pero no pudimos enviar el correo.', cres.ok && cdata.ok);
+              } catch (e) {
+                setMsg('Firma guardada, pero hubo un error de red al enviar el correo.');
+              }
+              chooseBox.style.display = 'none';
+            });
+          });
+        }
+      } else {
+        setMsg('Firma guardada. Puede cerrar esta página.', true);
+      }
     } catch (e) {
       setMsg('Error de red: ' + e.message);
     }

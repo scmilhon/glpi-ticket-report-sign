@@ -475,3 +475,120 @@ msgstr "Clients can only sign the client side."
 
 msgid "Select"
 msgstr "Select"
+
+msgid "Condensed"
+msgstr "Condensed"
+
+msgid "Full"
+msgstr "Full"
+
+msgid "Condensed version"
+msgstr "Condensed version"
+
+msgid "Full version"
+msgstr "Full version"
+
+msgid "Full report"
+msgstr "Full report"
+
+msgid "Condensed (problem + diagnosis + solution)"
+msgstr "Condensed (problem + diagnosis + solution)"
+
+msgid "Full history or only problem + diagnosis + solution"
+msgstr "Full history or only problem + diagnosis + solution"
+
+msgid "Diagnosis follow-up: %s"
+msgstr "Diagnosis follow-up: %s"
+
+msgid "No diagnosis applies to this case"
+msgstr "No diagnosis applies to this case"
+
+msgid "This is the diagnosis for this case"
+msgstr "This is the diagnosis for this case"
+
+msgid "Mark which follow-up is the diagnosis (or check \"no diagnosis applies\") before resolving the ticket."
+msgstr "Mark which follow-up is the diagnosis (or check \"no diagnosis applies\") before resolving the ticket."
+
+msgid "View in Report"
+msgstr "View in Report"
+
+msgid "No report ready for you yet."
+msgstr "No report ready for you yet."
+
+msgid "Delete saved signature"
+msgstr "Delete saved signature"
+
+msgid "Loaded your saved signature — just save, or clear it to draw a new one."
+msgstr "Loaded your saved signature — just save, or clear it to draw a new one."
+
+msgid "Saved signature removed. Draw a new one next time."
+msgstr "Saved signature removed. Draw a new one next time."
+
+msgid "Only the client can sign this side — from their own session, or the link emailed to them."
+msgstr "Only the client can sign this side — from their own session, or the link emailed to them."
+
+msgid "Signed — client confirmation pending"
+msgstr "Signed — client confirmation pending"
+
+msgid "Email branding"
+msgstr "Email branding"
+
+msgid "Used in the emails this plugin sends (sign requests, resends, closed-without-signature copies) — separate from the PDF logo/footer above, since the email header is dark and usually needs a reversed/white logo."
+msgstr "Used in the emails this plugin sends (sign requests, resends, closed-without-signature copies) — separate from the PDF logo/footer above, since the email header is dark and usually needs a reversed/white logo."
+
+msgid "Empty shows the company name as text instead of an image."
+msgstr "Empty shows the company name as text instead of an image."
+
+msgid "Email footer text"
+msgstr "Email footer text"
+
+msgid "Raw HTML, printed at the bottom of every email (company name, address, website…)."
+msgstr "Raw HTML, printed at the bottom of every email (company name, address, website…)."
+
+msgid "Document"
+msgstr "Document"
+
+msgid "Edit wording in template"
+msgstr "Edit wording in template"
+
+msgid "Rough mockup of the email header and footer, updated live as you edit the fields on the left. The subject and body wording come from the notification template — see the menu below."
+msgstr "Rough mockup of the email header and footer, updated live as you edit the fields on the left. The subject and body wording come from the notification template — see the menu below."
+
+msgid "Technician signed"
+msgstr "Technician signed"
+
+msgid "Resend chosen version"
+msgstr "Resend chosen version"
+
+msgid "Closed unsigned"
+msgstr "Closed unsigned"
+
+msgid "Notification templates"
+msgstr "Notification templates"
+
+msgid "(email body — set in the notification template)"
+msgstr "(email body — set in the notification template)"
+
+msgid "Invalid or expired verification code. Ask the signer to check their email again."
+msgstr "Invalid or expired verification code. Ask the signer to check their email again."
+
+msgid "Ask the signer for the 6-digit code sent to their email and enter it below."
+msgstr "Ask the signer for the 6-digit code sent to their email and enter it below."
+
+msgid "Verification code"
+msgstr "Verification code"
+
+msgid "Signer is not one of the requesters?"
+msgstr "Signer is not one of the requesters?"
+
+msgid "Signer email"
+msgstr "Signer email"
+
+msgid "Send code"
+msgstr "Send code"
+
+msgid "Verify"
+msgstr "Verify"
+
+msgid "Signer name"
+msgstr "Signer name"

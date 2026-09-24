@@ -54,11 +54,21 @@ if ($token !== '') {
     if (!empty($_POST['_glpi_csrf_token']) && method_exists(Session::class, 'validateCSRF')) {
         try { Session::validateCSRF($_POST); } catch (\Throwable $e) { /* soft-fail */ }
     }
-    if (!Authorizer::canActOnTicket((int) $report->fields['tickets_id'])) {
+    // This endpoint always signs the CLIENT side (see docblock) — the
+    // authenticated fallback must therefore require the actual
+    // requester, not just anyone who canActOnTicket() (which is also
+    // true for the assigned technician). Using the broader check here
+    // would let a technician forge the client's signature themselves.
+    if (!Authorizer::isTicketRequester((int) $report->fields['tickets_id'])) {
         http_response_code(403);
         echo json_encode(['error' => 'forbidden']);
         exit;
     }
+}
+if (empty($_POST['_glpiticketreportsign_client_confirms'])) {
+    http_response_code(400);
+    echo json_encode(['error' => 'client confirmation checkbox missing']);
+    exit;
 }
 
 $ticket = new Ticket();
@@ -68,46 +78,75 @@ if (!$ticket->getFromDB((int) $report->fields['tickets_id'])) {
     exit;
 }
 
-$existingTech   = (string) ($report->fields['signature_tech']   ?? '');
-$existingClient = (string) ($report->fields['signature_client'] ?? '');
-$existingTechNm = (string) ($report->fields['signer_name']        ?? '');
+// This endpoint is the "client signs" path. Keep each row's own
+// existing tech signature (if any), set/replace the client signature
+// on every row of the version group (full + condensed, when both
+// exist) so signing once signs both attachments.
+$version  = (int) $report->fields['version'];
+$siblings = Report::rowsForVersion((int) $report->fields['tickets_id'], $version);
+if ($siblings === []) {
+    $siblings = [$report->fields];
+}
 
 try {
-    // This endpoint is the "client signs" path. Keep existing tech
-    // signature (if any), set/replace client signature.
-    $bytes = (new ReportPdf(
-        $ticket,
-        $existingTech ?: null,
-        $existingTechNm ?: null,
-        $signature,
-        $signerNm ?: null,
-    ))->render();
+    $now = date('Y-m-d H:i:s');
+    foreach ($siblings as $row) {
+        $rowExistingTech   = (string) ($row['signature_tech'] ?? '');
+        $rowExistingTechNm = (string) ($row['signer_name']    ?? '');
 
-    ReportStorage::save(
-        $ticket,
-        $bytes,
-        Report::STATE_SIGNED,
-        $reportId,
-        [
-            'signature_tech'        => $existingTech ?: null,
-            'signature_client'      => $signature,
-            'signer_name'           => $existingTechNm ?: null,
-            'signer_client_name'    => $signerNm ?: null,
-            'signed_client_at'      => date('Y-m-d H:i:s'),
-            'signed_ip'             => $_SERVER['REMOTE_ADDR'] ?? null,
-        ]
-    );
+        $bytes = (new ReportPdf(
+            $ticket,
+            $rowExistingTech ?: null,
+            $rowExistingTechNm ?: null,
+            $signature,
+            $signerNm ?: null,
+            mode: (string) ($row['mode'] ?? ReportPdf::MODE_FULL),
+        ))->render();
+
+        ReportStorage::save(
+            $ticket,
+            $bytes,
+            Report::STATE_SIGNED,
+            (int) $row['id'],
+            [
+                'signature_tech'        => $rowExistingTech ?: null,
+                'signature_client'      => $signature,
+                'signer_name'           => $rowExistingTechNm ?: null,
+                'signer_client_name'    => $signerNm ?: null,
+                'signed_client_at'      => $now,
+                // Drawn by the client themselves through their own
+                // channel (token link or their own GLPI session) —
+                // self-confirming, unlike a signature a technician
+                // captures on their own session (see
+                // front/sign.submit.php / front/sign.php).
+                'client_confirmed_at'   => $now,
+                'signed_ip'             => $_SERVER['REMOTE_ADDR'] ?? null,
+            ]
+        );
+    }
 } catch (\Throwable $e) {
     http_response_code(500);
     echo json_encode(['error' => $e->getMessage()]);
     exit;
 }
 
-if ($token !== '') {
+// If there's only one version (no full/condensed choice to offer),
+// there's nothing left for the token to authorize — consume it now.
+// Otherwise leave it valid so ajax/choose_report_email.php can use it
+// for the "which version would you like emailed?" step; that
+// endpoint consumes it once the choice is made.
+if ($token !== '' && count($siblings) <= 1) {
     SigningToken::consume($token);
 }
 
+$siblingsOut = [];
+foreach ($siblings as $row) {
+    $siblingsOut[] = ['id' => (int) $row['id'], 'mode' => (string) ($row['mode'] ?? ReportPdf::MODE_FULL)];
+}
+
 echo json_encode([
-    'ok'      => true,
-    'pdf_url' => plugin_glpiticketreportsign_web_dir() . '/front/download.php?id=' . $reportId,
+    'ok'         => true,
+    'pdf_url'    => plugin_glpiticketreportsign_web_dir() . '/front/download.php?id=' . $reportId,
+    'siblings'   => $siblingsOut,
+    'token'      => $token !== '' && count($siblings) > 1 ? $token : null,
 ]);

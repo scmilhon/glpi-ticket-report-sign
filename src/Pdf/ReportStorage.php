@@ -40,6 +40,16 @@ class ReportStorage
      *   signer_client_users_id, signed_at, signed_client_at, signed_ip.
      *   Anything not provided is left untouched (on update) or set to
      *   null (on insert).
+     * @param ?string $mode ReportPdf::MODE_FULL / MODE_CONDENSED. Null
+     *   leaves the column untouched on an update (re-rendering for a
+     *   signature preserves whatever mode the report was generated
+     *   with) and defaults to MODE_FULL on a fresh insert.
+     * @param ?int $version Explicit version number for a fresh insert
+     *   — used when generating the full+condensed pair together so
+     *   both share the same version instead of each computing its
+     *   own "next" and drifting apart. Ignored on an update (the
+     *   existing row's version never changes). Null keeps the normal
+     *   auto-increment behaviour.
      */
     public static function save(
         Ticket $ticket,
@@ -47,6 +57,8 @@ class ReportStorage
         string $state,
         ?int $existingReportId = null,
         array $signatureFields = [],
+        ?string $mode = null,
+        ?int $version = null,
     ): int {
         $ticketId = $ticket->getID();
         $tmp      = tempnam(sys_get_temp_dir(), 'tr_pdf_');
@@ -54,7 +66,7 @@ class ReportStorage
 
         $version = $existingReportId !== null
             ? self::reportVersion($existingReportId)
-            : Report::nextVersion($ticketId);
+            : ($version ?? Report::nextVersion($ticketId));
 
         $filename = self::buildFilename($ticket);
 
@@ -84,7 +96,7 @@ class ReportStorage
                 'documents_id' => $docId,
                 'state'        => $state,
                 'date_mod'     => date('Y-m-d H:i:s'),
-            ], $signatureFields);
+            ], $mode !== null ? ['mode' => $mode] : [], $signatureFields);
             $report->update($update);
             return $existingReportId;
         }
@@ -94,6 +106,7 @@ class ReportStorage
             'documents_id'     => $docId,
             'version'          => $version,
             'state'            => $state,
+            'mode'             => $mode ?? \GlpiPlugin\Glpiticketreportsign\Pdf\ReportPdf::MODE_FULL,
             'created_users_id' => (int) ($_SESSION['glpiID'] ?? 0),
             'date_creation'    => date('Y-m-d H:i:s'),
             'date_mod'         => date('Y-m-d H:i:s'),

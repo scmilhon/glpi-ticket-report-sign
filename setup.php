@@ -9,16 +9,17 @@
  * — desktop or phone — to finalise the report. The signed PDF is
  * stored as a GLPI Document linked to the ticket.
  *
- * Copyright (C) 2026 Nueva Era Soluciones
- * Licensed under the GNU General Public License v3.0 — see LICENSE.
+ * Licensed under GPLv3.
  */
 
+use Glpi\Http\Firewall;
+use Glpi\Http\SessionManager;
 use Glpi\Plugin\Hooks;
 use GlpiPlugin\Glpiticketreportsign\Config;
 use GlpiPlugin\Glpiticketreportsign\Integration\TicketTab;
 use GlpiPlugin\Glpiticketreportsign\Profile;
 
-define('PLUGIN_GLPITICKETREPORTSIGN_VERSION', '0.0.8');
+define('PLUGIN_GLPITICKETREPORTSIGN_VERSION', '0.0.9');
 define('PLUGIN_GLPITICKETREPORTSIGN_MIN_GLPI', '10.0.0');
 define('PLUGIN_GLPITICKETREPORTSIGN_MAX_GLPI', '12.0.10');
 
@@ -94,7 +95,19 @@ function plugin_glpiticketreportsign_rightname_is_typed(string $parentClass): bo
 function plugin_glpiticketreportsign_web_dir(bool $full = true): string
 {
     if (method_exists(\Plugin::class, 'getWebDir')) {
-        return \Plugin::getWebDir('glpiticketreportsign', $full);
+        $path = \Plugin::getWebDir('glpiticketreportsign', $full);
+        // Core's own contract for $full=false is inconsistent with
+        // itself across call paths: it returns "plugins/<key>" with
+        // NO leading slash there, while every caller in this plugin
+        // (front/email.submit.php, ajax/send_sign_email.php,
+        // ReportMailer::sendReportLink()) concatenates it straight
+        // after rtrim($url_base, '/'), expecting one — producing
+        // broken links like "http://hostplugins/..." otherwise.
+        // Normalizing here (once) beats patching every call site.
+        if (!$full && $path !== '' && $path[0] !== '/') {
+            $path = '/' . $path;
+        }
+        return $path;
     }
     global $CFG_GLPI;
     $path = '/plugins/glpiticketreportsign';
@@ -201,6 +214,63 @@ function plugin_init_glpiticketreportsign(): void
 
     $PLUGIN_HOOKS['csrf_compliant']['glpiticketreportsign'] = true;
 
+    // GLPI 11+'s Firewall defaults every unregistered legacy plugin
+    // script to STRATEGY_AUTHENTICATED — without this, the public
+    // token-signed pages (reached by an anonymous client from the
+    // emailed link) get redirected to the login page before their
+    // own code ever runs, regardless of what that code checks.
+    // Precise per-file patterns only — NOT sign.form.php/sign.submit.php,
+    // which are the authenticated (technician/logged-in-client) pages
+    // and must keep requiring a real GLPI session. Every one of these
+    // 4 scripts already enforces its own authorization independently
+    // (SigningToken::verify()'s HMAC+expiry+single-use for the token
+    // path, or an explicit Session::checkLoginUser() call for the
+    // authenticated fallback path) — this only removes the routing-
+    // level gate, not any actual check. Pattern/guard follow the same
+    // convention already used by glpi-plugins/m365sso/setup.php.
+    // (ajax/mint_walkin_token.php is NOT in this list — it's reached
+    // only from the authenticated technician session in
+    // front/sign.form.php, so it goes through the normal CSRF/session
+    // checks like any other authenticated ajax endpoint.)
+    //
+    // Registering ONLY the firewall strategy is not enough: these are
+    // POST endpoints, and declaring csrf_compliant=true above makes
+    // GLPI auto-enforce Session::checkCSRF() on every POST this
+    // plugin receives — which an anonymous, session-less visitor can
+    // never satisfy (confirmed via glpi_logs/access-errors.log:
+    // "CSRF check failed ... at /plugins/glpiticketreportsign/ajax/
+    // sign_submit.php"). SessionManager::registerPluginStatelessPath()
+    // marks the same paths as stateless, which both CheckCsrfListener
+    // and FirewallStrategyListener skip entirely for — the correct,
+    // official way to carve out token-authenticated endpoints from a
+    // plugin that is otherwise CSRF-compliant for its normal forms.
+    $publicResourcePatterns = [
+        '#^/front/sign\.php#',
+        '#^/ajax/sign_submit\.php#',
+        '#^/ajax/pdf_bytes\.php#',
+        '#^/ajax/choose_report_email\.php#',
+    ];
+    if (
+        class_exists(Firewall::class)
+        && method_exists(Firewall::class, 'addPluginStrategyForLegacyScripts')
+    ) {
+        foreach ($publicResourcePatterns as $pattern) {
+            Firewall::addPluginStrategyForLegacyScripts(
+                'glpiticketreportsign',
+                $pattern,
+                Firewall::STRATEGY_NO_CHECK
+            );
+        }
+    }
+    if (
+        class_exists(SessionManager::class)
+        && method_exists(SessionManager::class, 'registerPluginStatelessPath')
+    ) {
+        foreach ($publicResourcePatterns as $pattern) {
+            SessionManager::registerPluginStatelessPath('glpiticketreportsign', $pattern);
+        }
+    }
+
     Plugin::registerClass(Profile::class, ['addtabon' => 'Profile']);
 
     // Inject the "Report" tab into the standard Ticket form for
@@ -212,6 +282,25 @@ function plugin_init_glpiticketreportsign(): void
     // key/folder matching rules, only the array key below is.
     $PLUGIN_HOOKS[Hooks::ADD_CSS]['glpiticketreportsign'] = 'public/css/ticketreport.css';
 
+    // Auto-opens the Report tab for a requester with a signature
+    // pending — see public/js/pending-signature-redirect.js and
+    // ajax/pending_signature.php. Loads on every page, no-ops
+    // everywhere except ticket.form.php.
+    $PLUGIN_HOOKS[Hooks::ADD_JAVASCRIPT]['glpiticketreportsign'] = 'public/js/pending-signature-redirect.js';
+
+    // Renders the diagnosis widgets inside GLPI's native forms: the
+    // "mark as diagnosis" checkbox on a follow-up (see
+    // src/Hooks/OnFollowupFormRender.php) and the confirmation /
+    // "no diagnosis applies" checkbox on a solution (see
+    // src/Hooks/OnSolutionFormRender.php). Registered as a plain
+    // callable, not itemtype-keyed — post_item_form always fires
+    // with a plain array, never an object.
+    $PLUGIN_HOOKS[Hooks::POST_ITEM_FORM]['glpiticketreportsign'] = 'plugin_glpiticketreportsign_render_diagnosis_widgets';
+
+    // Adds a "View in Report" button next to a report PDF's native
+    // timeline entry — see src/Hooks/OnTimelineDocumentShow.php.
+    $PLUGIN_HOOKS[Hooks::POST_SHOW_ITEM]['glpiticketreportsign'] = 'plugin_glpiticketreportsign_render_timeline_document_button';
+
     // Surface the document-style configuration page in Setup >
     // General > Plugins. Visibility is gated by the plugin's own
     // right `plugin_glpiticketreportsign_config` (READ), which admins grant
@@ -220,13 +309,40 @@ function plugin_init_glpiticketreportsign(): void
         $PLUGIN_HOOKS['config_page']['glpiticketreportsign'] = 'front/config.form.php';
     }
 
+    // Gives front/config.form.php's own breadcrumb a real 3rd segment
+    // ("Inicio / Configuración / Ticket Report & Sign") instead of
+    // just "Inicio / Configuración" — the breadcrumb template reads
+    // menu['config']['content'][$item], so we add ONE new key here
+    // (never touching any existing entry) and point Html::header()'s
+    // $item at that same key. See Html::generateMenuSession() and
+    // templates/layout/parts/breadcrumbs.html.twig in GLPI core.
+    $PLUGIN_HOOKS[Hooks::REDEFINE_MENUS]['glpiticketreportsign'] = 'plugin_glpiticketreportsign_redefine_menus';
+
     // Auto-generate a draft report — and jump the user to the
     // Report tab — the moment a solution is filed on a ticket.
     // We register a top-level function callback (rather than a
     // class-method array) because some GLPI 11 minor releases only
     // dispatch hooks declared as plain function names.
     $PLUGIN_HOOKS['item_add']['glpiticketreportsign'] = [
-        'ITILSolution' => 'plugin_glpiticketreportsign_on_solution_added',
+        'ITILSolution'  => 'plugin_glpiticketreportsign_on_solution_added',
+        'ITILFollowup'  => 'plugin_glpiticketreportsign_on_followup_added',
+    ];
+
+    // A follow-up edited through the form with the diagnosis checkbox
+    // (unchecking it clears the mark) — see
+    // src/Hooks/OnFollowupUpdated.php. A ticket closing without a
+    // client signature triggers the resumido courtesy email — see
+    // src/Hooks/OnTicketClosed.php.
+    $PLUGIN_HOOKS['item_update']['glpiticketreportsign'] = [
+        'ITILFollowup' => 'plugin_glpiticketreportsign_on_followup_updated',
+        'Ticket'       => 'plugin_glpiticketreportsign_on_ticket_updated',
+    ];
+
+    // Blocks resolving a ticket unless a follow-up is marked as the
+    // diagnosis (or "no diagnosis applies" was checked) — see
+    // src/Hooks/OnSolutionPreAdd.php for the actual rule.
+    $PLUGIN_HOOKS['pre_item_add']['glpiticketreportsign'] = [
+        'ITILSolution' => 'plugin_glpiticketreportsign_on_solution_preadd',
     ];
 }
 
@@ -285,4 +401,115 @@ function plugin_glpiticketreportsign_on_solution_added($item): void
         return;
     }
     \GlpiPlugin\Glpiticketreportsign\Hooks\OnSolutionAdded::handle($item);
+}
+
+/**
+ * Hook dispatcher for ITILSolution pre_item_add. Kept as a top-level
+ * function for the same reason as the item_add dispatcher above.
+ */
+function plugin_glpiticketreportsign_on_solution_preadd($item): void
+{
+    if (!$item instanceof \ITILSolution) {
+        return;
+    }
+    \GlpiPlugin\Glpiticketreportsign\Hooks\OnSolutionPreAdd::handle($item);
+}
+
+/**
+ * Hook dispatcher for ITILFollowup adds. See OnFollowupAdded.
+ */
+function plugin_glpiticketreportsign_on_followup_added($item): void
+{
+    if (!$item instanceof \ITILFollowup) {
+        return;
+    }
+    \GlpiPlugin\Glpiticketreportsign\Hooks\OnFollowupAdded::handle($item);
+}
+
+/**
+ * Hook dispatcher for ITILFollowup updates. See OnFollowupUpdated.
+ */
+function plugin_glpiticketreportsign_on_followup_updated($item): void
+{
+    if (!$item instanceof \ITILFollowup) {
+        return;
+    }
+    \GlpiPlugin\Glpiticketreportsign\Hooks\OnFollowupUpdated::handle($item);
+}
+
+/**
+ * Hook dispatcher for post_item_form. Routes to whichever renderer
+ * matches the subitem type — this hook is not itemtype-keyed
+ * (Plugin::doHook() only branches on itemtype when the hook is fired
+ * with a bare object; post_item_form is always fired with a plain
+ * array), so the itemtype check happens inside each handler instead.
+ */
+function plugin_glpiticketreportsign_render_diagnosis_widgets($data): void
+{
+    if (!is_array($data)) {
+        return;
+    }
+    \GlpiPlugin\Glpiticketreportsign\Hooks\OnSolutionFormRender::handle($data);
+    \GlpiPlugin\Glpiticketreportsign\Hooks\OnFollowupFormRender::handle($data);
+}
+
+/**
+ * Hook dispatcher for Ticket updates. See OnTicketClosed.
+ */
+function plugin_glpiticketreportsign_on_ticket_updated($item): void
+{
+    if (!$item instanceof \Ticket) {
+        return;
+    }
+    \GlpiPlugin\Glpiticketreportsign\Hooks\OnTicketClosed::handle($item);
+}
+
+/**
+ * Hook dispatcher for post_show_item. See
+ * src/Hooks/OnTimelineDocumentShow.php — same array-payload reasoning
+ * as the post_item_form dispatcher above.
+ */
+function plugin_glpiticketreportsign_render_timeline_document_button($data): void
+{
+    if (!is_array($data)) {
+        return;
+    }
+    \GlpiPlugin\Glpiticketreportsign\Hooks\OnTimelineDocumentShow::handle($data);
+}
+
+/**
+ * Adds exactly one new key under menu['config']['content'] so
+ * front/config.form.php's breadcrumb can show our plugin's name as
+ * its 3rd segment (see the Hooks::REDEFINE_MENUS registration
+ * above). Never modifies any existing entry — if the 'config'
+ * sector isn't present for some reason (e.g. a non-central
+ * interface), this is a no-op.
+ */
+function plugin_glpiticketreportsign_redefine_menus(array $menu): array
+{
+    if (!isset($menu['config']) || !is_array($menu['config'])) {
+        return $menu;
+    }
+    if (!isset($menu['config']['content']) || !is_array($menu['config']['content'])) {
+        $menu['config']['content'] = [];
+    }
+
+    // GLPI 10's breadcrumb wraps to a second line instead of
+    // truncating once "Home / Setup / <this>" no longer fits the row
+    // (it does on a narrow phone width, e.g. 320px, with the full
+    // "Ticket Report & Sign") — GLPI 11/12's breadcrumb doesn't have
+    // that problem, so only GLPI 10 gets the shortened label. Same
+    // Kernel-class check already used elsewhere in this plugin to
+    // tell the two apart.
+    $menuTitle = class_exists(\Glpi\Kernel\Kernel::class)
+        ? 'Ticket Report & Sign'
+        : 'Report & Sign';
+
+    $menu['config']['content']['glpiticketreportsign'] = [
+        'title' => $menuTitle,
+        'page'  => plugin_glpiticketreportsign_web_dir(false) . '/front/config.form.php',
+        'icon'  => 'ti ti-signature',
+    ];
+
+    return $menu;
 }

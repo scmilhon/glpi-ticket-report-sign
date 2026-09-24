@@ -16,16 +16,6 @@ use Ticket;
 class Authorizer
 {
     /**
-     * Name of the solution type that flips a ticket into the MTTO
-     * (maintenance) report flow. Left empty in this build — matching
-     * a specific solution-type name is a per-instance business rule,
-     * not something this plugin ships with a default for — so
-     * isMaintenanceTicket()/isMaintenanceSolutionType() never match
-     * anything and the MTTO button stays disabled everywhere.
-     */
-    private const MAINTENANCE_SOLUTION_TYPE_NAME = '';
-
-    /**
      * True when the ticket is in the CLOSED state. Used to gate
      * report generation: once a ticket is closed the report list
      * is read-only.
@@ -41,17 +31,16 @@ class Authorizer
 
     /**
      * True when the ticket's most recent ITILSolution has the type
-     * named by MAINTENANCE_SOLUTION_TYPE_NAME (any casing / accent
-     * variant). The Report tab uses this to flip between two flows:
+     * "Mantenimiento Preventivo" (any casing / accent variant). The
+     * Report tab uses this to flip between the two flows:
      *
      *   - Maintenance ticket  → MTTO's button enabled, Generate
      *                            disabled (use MTTO so the computer
      *                            data shows up in the report).
      *   - Anything else       → Generate enabled, MTTO disabled.
      *
-     * MAINTENANCE_SOLUTION_TYPE_NAME is empty in this build, so this
-     * always returns false and the MTTO flow never activates — see
-     * the constant's own docblock above.
+     * The ticket status is not consulted here — adding the right
+     * solution type is enough to flip into maintenance mode.
      */
     public static function isMaintenanceTicket(int $ticketId): bool
     {
@@ -69,11 +58,8 @@ class Authorizer
         if (!is_array($row)) {
             return false;
         }
-        if (self::MAINTENANCE_SOLUTION_TYPE_NAME === '') {
-            return false;
-        }
         return self::normalize((string) ($row['name'] ?? ''))
-            === self::normalize(self::MAINTENANCE_SOLUTION_TYPE_NAME);
+            === self::normalize('Mantenimiento Preventivo');
     }
 
     /**
@@ -86,11 +72,10 @@ class Authorizer
     }
 
     /**
-     * True when the given solutiontype id refers to a row whose name
-     * normalises to MAINTENANCE_SOLUTION_TYPE_NAME. Used by the
+     * True when the given solutiontype id refers to a row whose
+     * name normalises to "mantenimiento preventivo". Used by the
      * auto-generate-on-solution hook to skip generation for
      * maintenance tickets (those go through the MTTO flow instead).
-     * Empty in this build, so this always returns false.
      */
     public static function isMaintenanceSolutionType(int $solutionTypesId): bool
     {
@@ -107,11 +92,8 @@ class Authorizer
         if (!is_array($row)) {
             return false;
         }
-        if (self::MAINTENANCE_SOLUTION_TYPE_NAME === '') {
-            return false;
-        }
         return self::normalize((string) ($row['name'] ?? ''))
-            === self::normalize(self::MAINTENANCE_SOLUTION_TYPE_NAME);
+            === self::normalize('Mantenimiento Preventivo');
     }
 
     private static function normalize(string $s): string

@@ -7,6 +7,7 @@ use Document_Item;
 use Entity;
 use FPDF;
 use GlpiPlugin\Glpiticketreportsign\Config;
+use GlpiPlugin\Glpiticketreportsign\Diagnosis\Diagnosis;
 use ITILFollowup;
 use ITILSolution;
 use Ticket;
@@ -38,6 +39,17 @@ class ReportPdf
 {
     private const IMG_EXT = ['png', 'jpg', 'jpeg', 'gif'];
 
+    /** Every follow-up and solution the ticket has ever had. */
+    public const MODE_FULL = 'full';
+    /**
+     * Only the ticket description, the follow-up marked as the
+     * diagnosis (see Diagnosis::latestForTicket()), and the solution
+     * from that same resolution cycle. Falls back to MODE_FULL's
+     * follow-ups/solution rendering when the ticket has no diagnosis
+     * on file (e.g. reports generated before this feature existed).
+     */
+    public const MODE_CONDENSED = 'condensed';
+
     public function __construct(
         private readonly Ticket $ticket,
         private readonly ?string $signatureTech     = null,
@@ -45,6 +57,7 @@ class ReportPdf
         private readonly ?string $signatureClient   = null,
         private readonly ?string $signerClientName  = null,
         private readonly ?Computer $computer        = null,
+        private readonly string $mode               = self::MODE_FULL,
     ) {
     }
 
@@ -57,9 +70,16 @@ class ReportPdf
 
         $this->renderClientBlock($pdf);
         $this->renderEquipmentBlock($pdf);
+        // Descripción → Diagnóstico → Resolución → Seguimientos (the
+        // rest, full mode only) — problem, then what was diagnosed,
+        // then what was done about it, with the day-to-day follow-up
+        // history last since it's context, not the point of the report.
         $this->renderDescriptionBlock($pdf);
-        $this->renderFollowupsBlock($pdf);
+        $this->renderDiagnosisBlock($pdf);
         $this->renderSolutionBlock($pdf);
+        if ($this->mode === self::MODE_FULL) {
+            $this->renderRemainingFollowupsBlock($pdf);
+        }
         if ($this->computer !== null) {
             $this->renderComputerBlock($pdf);
         }
@@ -229,13 +249,63 @@ class ReportPdf
         $this->renderItemImages($pdf, Ticket::class, (int) $this->ticket->getID());
     }
 
-    private function renderFollowupsBlock(FPDF $pdf): void
+    /**
+     * The single follow-up marked as the diagnosis (Diagnosis::
+     * latestForTicket()), rendered in both modes. Skipped entirely
+     * when the ticket has no diagnosis on file — an older report, or
+     * the technician checked "no diagnosis applies".
+     */
+    private function renderDiagnosisBlock(FPDF $pdf): void
+    {
+        $diagnosis = Diagnosis::latestForTicket($this->ticket->getID());
+        if ($diagnosis === null) {
+            return;
+        }
+
+        global $DB;
+        $row = $DB->request([
+            'FROM'  => ITILFollowup::getTable(),
+            'WHERE' => ['id' => $diagnosis['itilfollowups_id']],
+            'LIMIT' => 1,
+        ])->current();
+        if (!is_array($row)) {
+            return;
+        }
+
+        $this->sectionHeader($pdf, 'DIAGNÓSTICO');
+        $author = self::userLabel((int) ($row['users_id'] ?? 0));
+        $when   = $this->fmtDate((string) ($row['date'] ?? ''));
+        $this->renderEntryCard(
+            $pdf,
+            'Diagnóstico',
+            $author . '  —  ' . $when,
+            '',
+            (string) ($row['content'] ?? ''),
+            ITILFollowup::class,
+            (int) $row['id']
+        );
+    }
+
+    /**
+     * Every follow-up EXCEPT the diagnosis one — full mode only,
+     * rendered last as background context rather than interleaved
+     * with the problem/diagnosis/resolution narrative.
+     */
+    private function renderRemainingFollowupsBlock(FPDF $pdf): void
     {
         global $DB;
+        $diagnosis = Diagnosis::latestForTicket($this->ticket->getID());
+        $excludeId = $diagnosis['itilfollowups_id'] ?? 0;
+
+        $where = ['itemtype' => 'Ticket', 'items_id' => $this->ticket->getID()];
+        if ($excludeId > 0) {
+            $where[] = ['NOT' => ['id' => $excludeId]];
+        }
+
         $rows = [];
         foreach ($DB->request([
             'FROM'  => ITILFollowup::getTable(),
-            'WHERE' => ['itemtype' => 'Ticket', 'items_id' => $this->ticket->getID()],
+            'WHERE' => $where,
             'ORDER' => 'date ASC',
         ]) as $r) {
             $rows[] = $r;
@@ -319,10 +389,21 @@ class ReportPdf
     private function renderSolutionBlock(FPDF $pdf): void
     {
         global $DB;
+        $where = ['itemtype' => 'Ticket', 'items_id' => $this->ticket->getID()];
+        if ($this->mode === self::MODE_CONDENSED) {
+            $diagnosis = Diagnosis::latestForTicket($this->ticket->getID());
+            if ($diagnosis !== null) {
+                // Only the solution from the same resolution cycle as
+                // the diagnosis — "un problema, un diagnóstico, una
+                // solución", not the ticket's whole resolution history.
+                $where['id'] = $diagnosis['itilsolutions_id'];
+            }
+        }
+
         $rows = [];
         foreach ($DB->request([
             'FROM'  => ITILSolution::getTable(),
-            'WHERE' => ['itemtype' => 'Ticket', 'items_id' => $this->ticket->getID()],
+            'WHERE' => $where,
             'ORDER' => 'date_creation ASC',
         ]) as $r) {
             $rows[] = $r;

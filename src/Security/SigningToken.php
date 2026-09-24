@@ -13,11 +13,24 @@ namespace GlpiPlugin\Glpiticketreportsign\Security;
  */
 class SigningToken
 {
+    /** Default TTL for the manual "Send by email" (front/email.form.php) link. */
     private const TTL_SECONDS = 7 * 24 * 3600;
 
-    public static function mint(int $reportId, string $recipient): string
+    /** TTL for the automatic sign-request / view-link emails (see ReportMailer). */
+    public const TTL_72H = 72 * 3600;
+
+    /**
+     * @param string $signerName Display name for the recipient — the
+     *   linked requester's own name, or whatever a technician typed
+     *   for a walk-in signer (see ajax/mint_walkin_token.php). Stored
+     *   so front/sign.form.php can pre-fill the "Name" field once the
+     *   matching code is verified (see verifyOtpForTicket()), instead
+     *   of asking the technician to retype what the signer already
+     *   gave them.
+     */
+    public static function mint(int $reportId, string $recipient, ?int $ttlSeconds = null, string $signerName = ''): string
     {
-        $exp   = time() + self::TTL_SECONDS;
+        $exp   = time() + ($ttlSeconds ?? self::TTL_SECONDS);
         $nonce = bin2hex(random_bytes(8));
         $body  = $reportId . '.' . $exp . '.' . $nonce;
         $hmac  = hash_hmac('sha256', $body, self::secret());
@@ -27,6 +40,14 @@ class SigningToken
         $DB->insert('glpi_plugin_glpiticketreportsign_signlinks', [
             'reports_id'    => $reportId,
             'token_hash'    => hash('sha256', $token),
+            // Short, spoken-aloud/typed-by-hand companion to the long
+            // link — shares this same row's expiry/consumed_at so
+            // revoking one revokes the other. Not every mint() caller
+            // needs it (the manual "Send by email" 7-day link has no
+            // use for it), but generating it unconditionally keeps
+            // this the single place a signlink row is created.
+            'otp_code'      => str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT),
+            'signer_name'   => $signerName !== '' ? $signerName : null,
             'recipient'     => $recipient,
             'expires_at'    => date('Y-m-d H:i:s', $exp),
             'created_users_id' => (int) ($_SESSION['glpiID'] ?? 0),
@@ -36,7 +57,95 @@ class SigningToken
         return $token;
     }
 
-    /** @return array{reports_id:int}|null */
+    /** The 6-digit code minted alongside $token (see mint()), or null. */
+    public static function otpFor(string $token): ?string
+    {
+        global $DB;
+        $row = $DB->request([
+            'FROM'  => 'glpi_plugin_glpiticketreportsign_signlinks',
+            'WHERE' => ['token_hash' => hash('sha256', $token)],
+            'LIMIT' => 1,
+        ])->current();
+        $otp = is_array($row) ? (string) ($row['otp_code'] ?? '') : '';
+        return $otp !== '' ? $otp : null;
+    }
+
+    /**
+     * Looks up a not-yet-consumed, not-yet-expired signlink by its
+     * 6-digit code, scoped to reports belonging to $ticketId — used
+     * when a technician types a requester's (or walk-in signer's)
+     * code in person instead of the requester following their own
+     * emailed link (see front/sign.submit.php, front/sign.form.php).
+     *
+     * @return array{signlink_id:int,reports_id:int,recipient:string,signer_name:string}|null
+     */
+    public static function verifyOtpForTicket(int $ticketId, string $otp): ?array
+    {
+        $otp = trim($otp);
+        if (!preg_match('/^\d{6}$/', $otp)) {
+            return null;
+        }
+
+        global $DB;
+        $row = $DB->request([
+            'SELECT'     => ['sl.id AS signlink_id', 'sl.reports_id', 'sl.recipient', 'sl.signer_name', 'sl.expires_at'],
+            'FROM'       => 'glpi_plugin_glpiticketreportsign_signlinks AS sl',
+            'INNER JOIN' => [
+                'glpi_plugin_glpiticketreportsign_reports AS r' => ['ON' => ['sl' => 'reports_id', 'r' => 'id']],
+            ],
+            'WHERE'      => [
+                'r.tickets_id'   => $ticketId,
+                'sl.otp_code'    => $otp,
+                'sl.consumed_at' => null,
+            ],
+            'ORDER'      => 'sl.id DESC',
+            'LIMIT'      => 1,
+        ])->current();
+
+        if (!is_array($row) || $row['expires_at'] === null || strtotime((string) $row['expires_at']) < time()) {
+            return null;
+        }
+
+        return [
+            'signlink_id' => (int) $row['signlink_id'],
+            'reports_id'  => (int) $row['reports_id'],
+            'recipient'   => (string) $row['recipient'],
+            'signer_name' => (string) ($row['signer_name'] ?? ''),
+        ];
+    }
+
+    /**
+     * Revokes every outstanding signlink (long link + OTP alike, they
+     * share a row) tied to any report version of $ticketId — both the
+     * "full" and "condensed" siblings of every version — excluding
+     * MTTO reports (computers_id > 0), which have their own
+     * independent lifecycle. Called once a technician's token-gated,
+     * in-person client signature succeeds (see front/sign.submit.php),
+     * so a code that already served its purpose can't be reused for a
+     * different signer later in the same ticket.
+     */
+    public static function invalidateAllForTicket(int $ticketId): void
+    {
+        global $DB;
+        $reportIds = [];
+        foreach ($DB->request([
+            'SELECT' => 'id',
+            'FROM'   => 'glpi_plugin_glpiticketreportsign_reports',
+            'WHERE'  => ['tickets_id' => $ticketId, 'computers_id' => 0],
+        ]) as $row) {
+            $reportIds[] = (int) $row['id'];
+        }
+        if ($reportIds === []) {
+            return;
+        }
+        $DB->update(
+            'glpi_plugin_glpiticketreportsign_signlinks',
+            ['consumed_at' => date('Y-m-d H:i:s')],
+            ['reports_id' => $reportIds, 'consumed_at' => null]
+        );
+    }
+
+    /** @return array{reports_id:int,recipient:string}|null */
     public static function verify(string $token): ?array
     {
         $raw = self::b64udec($token);
@@ -67,7 +176,7 @@ class SigningToken
             return null;
         }
 
-        return ['reports_id' => (int) $reportId];
+        return ['reports_id' => (int) $reportId, 'recipient' => (string) $row['recipient']];
     }
 
     public static function consume(string $token): void

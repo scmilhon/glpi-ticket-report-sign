@@ -56,62 +56,12 @@ class TicketReportFpdf extends FPDF
         // The logo path is relative to GLPI_ROOT, so the plugin can
         // reuse logos already present in the GLPI install (pics/, the
         // _pictures/ uploads folder, etc.) without duplicating files.
-        $this->logoPath = self::resolveLogoPath((string) ($cfg['logo_path'] ?? ''));
+        $this->logoPath = Config::resolveLogoPath((string) ($cfg['logo_path'] ?? ''));
 
         $this->ticketIdRgb = self::hexToRgb((string) $cfg['ticket_id_color'], [220, 0, 0]);
         $this->footerTpl   = (string) ($cfg['footer_text'] ?? 'Página {page}/{pages}');
 
         $this->qrPath = $this->renderQr($this->ticketUrl());
-    }
-
-    /**
-     * Turn a config path into an absolute filesystem path that
-     * FPDF::Image can read. Handles four forms:
-     *   - Absolute paths (returned as-is when the file exists).
-     *   - Paths starting with "_pictures/" — resolved against
-     *     GLPI_PICTURE_DIR, where GLPI stores uploaded branding.
-     *   - Paths starting with "pics/" — resolved against GLPI's own
-     *     pics/ directory (version-agnostic: GLPI_ROOT/pics on GLPI
-     *     10, GLPI_ROOT/public/pics from GLPI 11 on — see
-     *     plugin_glpiticketreportsign_glpi_pics_dir()), so a value
-     *     like "pics/logos/logo-GLPI-100-grey.png" picks up the
-     *     stock GLPI logo without extra setup on any version.
-     *   - Anything else — resolved against GLPI_ROOT as a last
-     *     resort, for a fully custom path outside pics/.
-     */
-    private static function resolveLogoPath(string $configured): string
-    {
-        $configured = trim($configured);
-        if ($configured === '') {
-            return '';
-        }
-        if (is_file($configured)) {
-            return $configured;
-        }
-
-        if (strncmp($configured, '_pictures/', 10) === 0 && defined('GLPI_PICTURE_DIR')) {
-            $abs = rtrim(GLPI_PICTURE_DIR, '/\\')
-                 . DIRECTORY_SEPARATOR
-                 . substr($configured, 10);
-            return is_file($abs) ? $abs : '';
-        }
-
-        if (strncmp($configured, 'pics/', 5) === 0 && function_exists('plugin_glpiticketreportsign_glpi_pics_dir')) {
-            $picsDir = plugin_glpiticketreportsign_glpi_pics_dir();
-            if ($picsDir !== '') {
-                $abs = $picsDir . DIRECTORY_SEPARATOR
-                     . str_replace('/', DIRECTORY_SEPARATOR, substr($configured, 5));
-                if (is_file($abs)) {
-                    return $abs;
-                }
-            }
-        }
-
-        $root = defined('GLPI_ROOT') ? GLPI_ROOT : dirname(__DIR__, 4);
-        $abs  = rtrim($root, '/\\')
-              . DIRECTORY_SEPARATOR
-              . str_replace('/', DIRECTORY_SEPARATOR, ltrim($configured, '/\\'));
-        return is_file($abs) ? $abs : '';
     }
 
     public function Header(): void

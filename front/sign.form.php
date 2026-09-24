@@ -13,6 +13,7 @@
 use GlpiPlugin\Glpiticketreportsign\Profile;
 use GlpiPlugin\Glpiticketreportsign\Report;
 use GlpiPlugin\Glpiticketreportsign\Security\Authorizer;
+use GlpiPlugin\Glpiticketreportsign\Signature\SavedSignature;
 
 ob_start();
 include('../../../inc/includes.php');
@@ -33,6 +34,18 @@ $ticketId      = (int) $report->fields['tickets_id'];
 $isRequester   = Authorizer::isTicketRequester($ticketId);
 $isTechSession = !$isRequester && Profile::hasRight(UPDATE) && Authorizer::canActOnTicket($ticketId);
 
+$ticket = new Ticket();
+if (!$ticket->getFromDB($ticketId)) {
+    Html::displayErrorAndDie(__('Ticket not found', 'glpiticketreportsign'));
+}
+// Same scope as the server-side gate in front/sign.submit.php: only a
+// report born from a ticket resolution (status Solved/Closed), not an
+// MTTO report, requires the signer's code before a technician can
+// draw their signature in person.
+$isMtto         = (int) ($report->fields['computers_id'] ?? 0) > 0;
+$statusGated    = in_array((int) $ticket->fields['status'], [Ticket::SOLVED, Ticket::CLOSED], true);
+$otpFlowApplies = !$isMtto && $statusGated;
+
 // Allow access if the user is either:
 //   - a technician with the UPDATE right (full page, both panels)
 //   - a requester on the ticket (client-only panel)
@@ -45,8 +58,28 @@ $clientAlreadySigned = !empty($report->fields['signature_client']);
 // Client self-service flag — disables the tech panel entirely and
 // the JS will only initialise the client pad.
 $clientOnly          = $isRequester && !$isTechSession;
+// Both a technician (in-person visit — the client signs right there
+// on the technician's device) and the requester themselves may draw
+// the client signature; when it's the technician doing it on a report
+// gated by $otpFlowApplies below, the signer's own 6-digit code is the
+// anti-forgery measure (front/sign.submit.php enforces it server-side)
+// — not who's allowed to draw it here.
+$clientInteractive   = $techAlreadySigned;
+// The technician must type and verify the signer's 6-digit code
+// before the Name field / canvas even appear (see trClientFields
+// below); the code is also re-checked server-side on save (front/
+// sign.submit.php). The requester signing from their own session is
+// never gated.
+$needsOtp            = $techAlreadySigned && $isTechSession && $otpFlowApplies && !$clientAlreadySigned;
 $techExistingName    = (string) ($report->fields['signer_name']        ?? '');
 $clientExistingName  = (string) ($report->fields['signer_client_name'] ?? '');
+
+// A technician who already signed a previous report doesn't have to
+// redraw every time: pre-load their saved signature into the canvas
+// when this particular report doesn't have its own yet.
+$savedSignature = ($isTechSession && !$techAlreadySigned)
+    ? SavedSignature::get((int) $_SESSION['glpiID'])
+    : null;
 
 $base       = plugin_glpiticketreportsign_web_dir();
 $pdfUrl     = $base . '/ajax/pdf_bytes.php?id=' . $reportId;
@@ -144,9 +177,16 @@ Html::header(__('Sign report', 'glpiticketreportsign'), '', 'helpdesk', 'ticket'
                     htmlspecialchars($techExistingName ?: __('unknown', 'glpiticketreportsign'))) ?>
               </div>
             <?php endif; ?>
+            <?php if ($savedSignature !== null): ?>
+              <div class="alert alert-light border py-2 small mb-3" id="trSavedSigHint">
+                <i class="ti ti-info-circle me-1"></i>
+                <?= __('Loaded your saved signature — just save, or clear it to draw a new one.', 'glpiticketreportsign') ?>
+              </div>
+            <?php endif; ?>
+
             <label class="form-label fw-semibold"><?= __('Name', 'glpiticketreportsign') ?></label>
             <input type="text" name="signer_tech_name" class="form-control mb-3"
-                   value="<?= htmlspecialchars($techExistingName ?: $techDefault, ENT_QUOTES) ?>">
+                   value="<?= htmlspecialchars($techExistingName ?: ($savedSignature['signer_name'] ?? '') ?: $techDefault, ENT_QUOTES) ?>">
 
             <label class="form-label fw-semibold"><?= __('Draw signature', 'glpiticketreportsign') ?></label>
             <canvas id="trSigTech" class="trSigPad"></canvas>
@@ -155,6 +195,11 @@ Html::header(__('Sign report', 'glpiticketreportsign'), '', 'helpdesk', 'ticket'
               <button type="button" class="btn btn-sm btn-outline-secondary" data-clear="trSigTech">
                 <i class="ti ti-eraser me-1"></i><?= __('Clear', 'glpiticketreportsign') ?>
               </button>
+              <?php if ($savedSignature !== null): ?>
+                <button type="button" class="btn btn-sm btn-outline-danger" id="trDeleteSavedSig">
+                  <i class="ti ti-trash me-1"></i><?= __('Delete saved signature', 'glpiticketreportsign') ?>
+                </button>
+              <?php endif; ?>
               <button type="button" class="btn btn-primary ms-auto" id="trSubmitTech">
                 <i class="ti ti-device-floppy me-1"></i><?= __('Save technician signature', 'glpiticketreportsign') ?>
               </button>
@@ -194,25 +239,63 @@ Html::header(__('Sign report', 'glpiticketreportsign'), '', 'helpdesk', 'ticket'
                 <?= sprintf(__('Currently signed by: %s. Drawing a new signature will replace it.', 'glpiticketreportsign'),
                     htmlspecialchars($clientExistingName ?: __('unknown', 'glpiticketreportsign'))) ?>
               </div>
+            <?php elseif (!$clientInteractive): ?>
+              <div class="alert alert-light border py-2 small mb-3">
+                <i class="ti ti-info-circle me-1"></i>
+                <?= __('Only the client can sign this side — from their own session, or the link emailed to them.', 'glpiticketreportsign') ?>
+              </div>
             <?php endif; ?>
 
-            <label class="form-label fw-semibold"><?= __('Name', 'glpiticketreportsign') ?></label>
-            <input type="text" name="signer_client_name" class="form-control mb-3"
-                   value="<?= htmlspecialchars($clientExistingName ?: $clientDefault, ENT_QUOTES) ?>"
-                   <?= $techAlreadySigned ? '' : 'disabled' ?>>
+            <?php if ($needsOtp): ?>
+              <div class="alert alert-warning py-2 small mb-3" id="trOtpNotice">
+                <i class="ti ti-shield-lock me-1"></i>
+                <?= __('Ask the signer for the 6-digit code sent to their email and enter it below.', 'glpiticketreportsign') ?>
+              </div>
+              <label class="form-label fw-semibold"><?= __('Verification code', 'glpiticketreportsign') ?></label>
+              <div class="d-flex gap-2 mb-2">
+                <input type="text" name="otp_code" id="trOtpCode" class="form-control"
+                       inputmode="numeric" pattern="\d{6}" maxlength="6" autocomplete="one-time-code" placeholder="000000">
+                <button type="button" class="btn btn-outline-primary text-nowrap" id="trOtpVerify">
+                  <?= __('Verify', 'glpiticketreportsign') ?>
+                </button>
+              </div>
+              <div id="trOtpVerifyMsg" class="small mb-2"></div>
+              <div class="mb-3">
+                <button type="button" class="btn btn-link btn-sm p-0" id="trOtpAdhocToggle">
+                  <?= __('Signer is not one of the requesters?', 'glpiticketreportsign') ?>
+                </button>
+                <div id="trOtpAdhocBox" class="mt-2 d-none gap-2 flex-wrap">
+                  <input type="text" id="trOtpAdhocName" class="form-control form-control-sm" style="max-width:200px"
+                         placeholder="<?= htmlspecialchars(__('Signer name', 'glpiticketreportsign'), ENT_QUOTES) ?>">
+                  <input type="email" id="trOtpAdhocEmail" class="form-control form-control-sm" style="max-width:220px"
+                         placeholder="<?= htmlspecialchars(__('Signer email', 'glpiticketreportsign'), ENT_QUOTES) ?>">
+                  <button type="button" class="btn btn-sm btn-outline-primary text-nowrap" id="trOtpAdhocSend">
+                    <?= __('Send code', 'glpiticketreportsign') ?>
+                  </button>
+                </div>
+                <div id="trOtpAdhocMsg" class="small mt-1"></div>
+              </div>
+            <?php endif; ?>
 
-            <label class="form-label fw-semibold"><?= __('Draw signature', 'glpiticketreportsign') ?></label>
-            <canvas id="trSigClient" class="trSigPad <?= $techAlreadySigned ? '' : 'trDisabled' ?>"></canvas>
+            <div id="trClientFields" class="<?= $needsOtp ? 'd-none' : '' ?>">
+              <label class="form-label fw-semibold"><?= __('Name', 'glpiticketreportsign') ?></label>
+              <input type="text" name="signer_client_name" id="trSigClientName" class="form-control mb-3"
+                     value="<?= htmlspecialchars($clientExistingName ?: ($needsOtp ? '' : $clientDefault), ENT_QUOTES) ?>"
+                     <?= $clientInteractive ? '' : 'disabled' ?>>
 
-            <div class="mt-3 d-flex gap-2 flex-wrap">
-              <button type="button" class="btn btn-sm btn-outline-secondary" data-clear="trSigClient"
-                      <?= $techAlreadySigned ? '' : 'disabled' ?>>
-                <i class="ti ti-eraser me-1"></i><?= __('Clear', 'glpiticketreportsign') ?>
-              </button>
-              <button type="button" class="btn btn-primary ms-auto" id="trSubmitClient"
-                      <?= $techAlreadySigned ? '' : 'disabled' ?>>
-                <i class="ti ti-device-floppy me-1"></i><?= __('Save client signature', 'glpiticketreportsign') ?>
-              </button>
+              <label class="form-label fw-semibold"><?= __('Draw signature', 'glpiticketreportsign') ?></label>
+              <canvas id="trSigClient" class="trSigPad <?= $clientInteractive ? '' : 'trDisabled' ?>"></canvas>
+
+              <div class="mt-3 d-flex gap-2 flex-wrap">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-clear="trSigClient"
+                        <?= $clientInteractive ? '' : 'disabled' ?>>
+                  <i class="ti ti-eraser me-1"></i><?= __('Clear', 'glpiticketreportsign') ?>
+                </button>
+                <button type="button" class="btn btn-primary ms-auto" id="trSubmitClient"
+                        <?= $clientInteractive ? '' : 'disabled' ?>>
+                  <i class="ti ti-device-floppy me-1"></i><?= __('Save client signature', 'glpiticketreportsign') ?>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -249,7 +332,19 @@ $jsMtime = is_file($jsFile) ? (string) filemtime($jsFile) : (string) time();
 ?>
 <script>window.TicketReportSignPage = {
   techAlreadySigned: <?= $techAlreadySigned ? 'true' : 'false' ?>,
-  clientOnly:        <?= $clientOnly ? 'true' : 'false' ?>
+  clientOnly:        <?= $clientOnly ? 'true' : 'false' ?>,
+  clientInteractive: <?= $clientInteractive ? 'true' : 'false' ?>,
+  needsOtp:           <?= $needsOtp ? 'true' : 'false' ?>,
+  reportId:           <?= $reportId ?>,
+  mintWalkinUrl:      <?= json_encode($base . '/ajax/mint_walkin_token.php') ?>,
+  verifyOtpUrl:       <?= json_encode($base . '/ajax/verify_client_otp.php') ?>,
+  savedTechSignature: <?= $savedSignature !== null ? json_encode($savedSignature['signature_png']) : 'null' ?>,
+  clearSavedSigUrl:   <?= json_encode($base . '/front/signature.clear.php') ?>,
+  csrf:               <?= json_encode($csrf) ?>,
+  // The signature already on file for THIS report — shown as-is so
+  // "already signed" isn't just a badge over a blank canvas.
+  existingTechSignature:   <?= $techAlreadySigned   ? json_encode((string) $report->fields['signature_tech'])   : 'null' ?>,
+  existingClientSignature: <?= $clientAlreadySigned ? json_encode((string) $report->fields['signature_client']) : 'null' ?>
 };</script>
 <script src="<?= htmlspecialchars($base . '/public/js/sign-internal.js') ?>?v=<?= htmlspecialchars($jsMtime) ?>"></script>
 <?php

@@ -1,6 +1,7 @@
 <?php
 namespace GlpiPlugin\Glpiticketreportsign\Hooks;
 
+use GlpiPlugin\Glpiticketreportsign\Diagnosis\Diagnosis;
 use GlpiPlugin\Glpiticketreportsign\Pdf\ReportPdf;
 use GlpiPlugin\Glpiticketreportsign\Pdf\ReportStorage;
 use GlpiPlugin\Glpiticketreportsign\Report;
@@ -40,6 +41,8 @@ final class OnSolutionAdded
             return;
         }
 
+        Diagnosis::attachPendingToSolution($ticketId, (int) $solution->getID());
+
         // Maintenance-preventive solutions skip auto-generation:
         // they're meant to flow through the MTTO button so the
         // technician explicitly picks which computer the report
@@ -51,8 +54,20 @@ final class OnSolutionAdded
         }
 
         try {
-            $bytes = (new ReportPdf($ticket))->render();
-            ReportStorage::save($ticket, $bytes, Report::STATE_DRAFT);
+            $version = Report::nextVersion($ticketId);
+
+            $fullBytes = (new ReportPdf($ticket, mode: ReportPdf::MODE_FULL))->render();
+            ReportStorage::save($ticket, $fullBytes, Report::STATE_DRAFT, mode: ReportPdf::MODE_FULL, version: $version);
+
+            // The condensed sibling only makes sense once there's a
+            // diagnosis to condense around — matches the exemption
+            // used everywhere else (OnSolutionPreAdd, the manual
+            // "Resumido" option, ReportPdf::renderDiagnosisBlock()).
+            if (Diagnosis::latestForTicket($ticketId) !== null) {
+                $condensedBytes = (new ReportPdf($ticket, mode: ReportPdf::MODE_CONDENSED))->render();
+                ReportStorage::save($ticket, $condensedBytes, Report::STATE_DRAFT, mode: ReportPdf::MODE_CONDENSED, version: $version);
+            }
+
             Session::addMessageAfterRedirect(
                 __('Solution recorded. A draft report was generated automatically.', 'glpiticketreportsign'),
                 false,

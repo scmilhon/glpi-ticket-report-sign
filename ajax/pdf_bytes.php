@@ -29,9 +29,24 @@ if (!$report->getFromDB($reportId)) {
 
 if ($token !== '') {
     $verified = SigningToken::verify($token);
-    if ($verified === null || $verified['reports_id'] !== $reportId) {
+    if ($verified === null) {
         http_response_code(403);
         exit('invalid token');
+    }
+    if ($verified['reports_id'] !== $reportId) {
+        // A token authorizes its own report AND its full/condensed
+        // sibling (same ticket+version) — the public sign page lets
+        // the recipient preview both, not just whichever mode the
+        // link happened to be minted for.
+        $tokenReport = new Report();
+        if (
+            !$tokenReport->getFromDB($verified['reports_id'])
+            || (int) $tokenReport->fields['tickets_id'] !== (int) $report->fields['tickets_id']
+            || (int) $tokenReport->fields['version'] !== (int) $report->fields['version']
+        ) {
+            http_response_code(403);
+            exit('invalid token');
+        }
     }
 } else {
     Session::checkLoginUser();

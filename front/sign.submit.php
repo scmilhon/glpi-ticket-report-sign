@@ -12,10 +12,13 @@
  * in context — the toast confirms what happened.
  */
 
+use GlpiPlugin\Glpiticketreportsign\Mail\Recipients;
+use GlpiPlugin\Glpiticketreportsign\Mail\ReportMailer;
 use GlpiPlugin\Glpiticketreportsign\Pdf\ReportPdf;
 use GlpiPlugin\Glpiticketreportsign\Pdf\ReportStorage;
 use GlpiPlugin\Glpiticketreportsign\Report;
 use GlpiPlugin\Glpiticketreportsign\Security\Authorizer;
+use GlpiPlugin\Glpiticketreportsign\Signature\SavedSignature;
 
 ob_start();
 include('../../../inc/includes.php');
@@ -44,8 +47,18 @@ if ($reportId <= 0 || !$report->getFromDB($reportId)) {
 $ticketId = (int) $report->fields['tickets_id'];
 
 // Permission model:
-//   - Technician with UPDATE right → can sign either side.
+//   - Technician with UPDATE right → can sign either side (this
+//     covers the common in-person visit: the client is right there
+//     and signs on the technician's own device/session).
 //   - Ticket requester (client)    → can sign ONLY the client side.
+// Forgery risk (a technician drawing the client's signature without
+// them actually being present) is handled BEFORE the fact for a
+// report born from a ticket resolution (status Solved/Closed, not an
+// MTTO report): the technician must type the signer's 6-digit code —
+// emailed only to that signer, or to whatever address the technician
+// enters for a walk-in signer who isn't an existing requester (see
+// ajax/mint_walkin_token.php) — before the client signature is
+// accepted below. See SigningToken::verifyOtpForTicket().
 $isRequester   = Authorizer::isTicketRequester($ticketId);
 $isTechSession = !$isRequester
     && \GlpiPlugin\Glpiticketreportsign\Profile::hasRight(UPDATE)
@@ -73,6 +86,14 @@ if (!$ticket->getFromDB((int) $report->fields['tickets_id'])) {
     Html::back();
 }
 
+// In-person OTP gate: only for a report born from a ticket resolution
+// (status Solved or Closed) that isn't an MTTO report — see
+// front/sign.form.php (renders the code field) and
+// SigningToken::verifyOtpForTicket()/invalidateAllForTicket().
+$isMtto         = (int) ($report->fields['computers_id'] ?? 0) > 0;
+$statusGated    = in_array((int) $ticket->fields['status'], [Ticket::SOLVED, Ticket::CLOSED], true);
+$otpFlowApplies = !$isMtto && $statusGated;
+
 // Take whichever side the user is updating; preserve the other.
 $existingTech     = (string) ($report->fields['signature_tech']     ?? '');
 $existingClient   = (string) ($report->fields['signature_client']   ?? '');
@@ -96,47 +117,147 @@ if ($which === 'tech') {
         Session::addMessageAfterRedirect(__('No technician signature received.', 'glpiticketreportsign'), false, ERROR);
         Html::back();
     }
-    $finalTech     = $sigTech;
-    $finalTechNm   = $techName !== '' ? $techName : $existingTechNm;
-    $finalClient   = $existingClient;
-    $finalClientNm = $existingClientNm;
 } else {
     if ($sigClient === '') {
         Session::addMessageAfterRedirect(__('No client signature received.', 'glpiticketreportsign'), false, ERROR);
         Html::back();
     }
-    $finalTech     = $existingTech;
-    $finalTechNm   = $existingTechNm;
-    $finalClient   = $sigClient;
-    $finalClientNm = $clientName !== '' ? $clientName : $existingClientNm;
+}
+
+// The technician can't draw the client's signature on a gated report
+// without first typing the signer's 6-digit code (emailed to them, or
+// to whatever address the technician entered for a walk-in signer —
+// see ajax/mint_walkin_token.php). The requester signing from their
+// own session/link is unaffected — this only restricts the
+// technician-session path.
+$otpVerification = null;
+if ($which === 'client' && $isTechSession && $otpFlowApplies) {
+    $otpCode          = trim((string) ($_POST['otp_code'] ?? ''));
+    $otpVerification  = \GlpiPlugin\Glpiticketreportsign\Security\SigningToken::verifyOtpForTicket($ticketId, $otpCode);
+    if ($otpVerification === null) {
+        Session::addMessageAfterRedirect(
+            __('Invalid or expired verification code. Ask the signer to check their email again.', 'glpiticketreportsign'),
+            false,
+            ERROR
+        );
+        Html::back();
+    }
+}
+
+// Signing applies to the whole version group (full + condensed, when
+// both exist — see OnSolutionAdded) so the technician signs once and
+// both attachments end up signed, instead of only whichever row's
+// "Sign" link they happened to click.
+$version  = (int) $report->fields['version'];
+$siblings = \GlpiPlugin\Glpiticketreportsign\Report::rowsForVersion($ticketId, $version);
+if ($siblings === []) {
+    $siblings = [$report->fields];
 }
 
 try {
-    $bytes = (new ReportPdf(
-        $ticket,
-        $finalTech   ?: null,
-        $finalTechNm ?: null,
-        $finalClient ?: null,
-        $finalClientNm ?: null,
-    ))->render();
-
     $now = date('Y-m-d H:i:s');
-    $fields = [
-        'signature_tech'         => $finalTech     ?: null,
-        'signature_client'       => $finalClient   ?: null,
-        'signer_name'            => $finalTechNm   ?: null,
-        'signer_client_name'     => $finalClientNm ?: null,
-        'signed_ip'              => $_SERVER['REMOTE_ADDR'] ?? null,
-    ];
-    if ($which === 'tech') {
-        $fields['signed_at']       = $now;
-        $fields['signer_users_id'] = (int) $_SESSION['glpiID'];
-    } else {
-        $fields['signed_client_at']        = $now;
-        $fields['signer_client_users_id']  = (int) $_SESSION['glpiID'];
+    $savedTechSig    = null;
+    $savedTechNm     = null;
+    $primaryReportId = $reportId; // fallback if no mode=full sibling is found (shouldn't happen)
+
+    foreach ($siblings as $row) {
+        $rowId             = (int) $row['id'];
+        $rowMode           = (string) ($row['mode'] ?? ReportPdf::MODE_FULL);
+        $rowExistingTech   = (string) ($row['signature_tech']     ?? '');
+        $rowExistingClient = (string) ($row['signature_client']   ?? '');
+        $rowExistingTechNm = (string) ($row['signer_name']        ?? '');
+        $rowExistingClientNm = (string) ($row['signer_client_name'] ?? '');
+
+        if ($which === 'tech') {
+            $rowFinalTech     = $sigTech;
+            $rowFinalTechNm   = $techName !== '' ? $techName : $rowExistingTechNm;
+            $rowFinalClient   = $rowExistingClient;
+            $rowFinalClientNm = $rowExistingClientNm;
+        } else {
+            $rowFinalTech     = $rowExistingTech;
+            $rowFinalTechNm   = $rowExistingTechNm;
+            $rowFinalClient   = $sigClient;
+            $rowFinalClientNm = $clientName !== '' ? $clientName : $rowExistingClientNm;
+        }
+
+        $bytes = (new ReportPdf(
+            $ticket,
+            $rowFinalTech   ?: null,
+            $rowFinalTechNm ?: null,
+            $rowFinalClient ?: null,
+            $rowFinalClientNm ?: null,
+            mode: $rowMode,
+        ))->render();
+
+        $fields = [
+            'signature_tech'     => $rowFinalTech     ?: null,
+            'signature_client'   => $rowFinalClient   ?: null,
+            'signer_name'        => $rowFinalTechNm   ?: null,
+            'signer_client_name' => $rowFinalClientNm ?: null,
+            'signed_ip'          => $_SERVER['REMOTE_ADDR'] ?? null,
+        ];
+        if ($rowMode === ReportPdf::MODE_FULL) {
+            $primaryReportId = $rowId;
+        }
+        if ($which === 'tech') {
+            $fields['signed_at']       = $now;
+            $fields['signer_users_id'] = (int) $_SESSION['glpiID'];
+            $savedTechSig = $rowFinalTech;
+            $savedTechNm  = $rowFinalTechNm;
+        } else {
+            $fields['signed_client_at']       = $now;
+            $fields['signer_client_users_id'] = (int) $_SESSION['glpiID'];
+            // Self-confirming: either the actual requester drew it
+            // from their own session (same reasoning as
+            // ajax/sign_submit.php's public token path), or a
+            // technician drew it in person after the signer's own
+            // 6-digit code proved they were actually present
+            // ($otpVerification above) — there's no more separate
+            // post-hoc acknowledgement step to defer to.
+            $fields['client_confirmed_at'] = $now;
+        }
+
+        ReportStorage::save($ticket, $bytes, Report::STATE_SIGNED, $rowId, $fields);
     }
 
-    ReportStorage::save($ticket, $bytes, Report::STATE_SIGNED, $reportId, $fields);
+    // Remember this signature under the acting user so their next
+    // report pre-loads it instead of forcing a redraw. Only the
+    // technician side is reusable this way — the client is a
+    // different person on every ticket.
+    if ($which === 'tech' && $savedTechSig) {
+        SavedSignature::save((int) $_SESSION['glpiID'], $savedTechSig, (string) $savedTechNm);
+    }
+
+    // The technician's signature is what makes the report ready for
+    // the client — automatically send them a 72h link to view (and,
+    // if it's their turn, sign) it. Failure here is logged but never
+    // blocks the technician's own save.
+    if ($which === 'tech') {
+        foreach (Recipients::requesterContacts($ticketId) as $contact) {
+            try {
+                ReportMailer::sendReportLink(
+                    $primaryReportId,
+                    $contact['email'],
+                    $ticketId,
+                    ReportMailer::TEMPLATE_TECH_SIGNED,
+                    $otpFlowApplies,
+                    $contact['name']
+                );
+            } catch (\Throwable $e) {
+                \Toolbox::logInFile('glpiticketreportsign_error', 'auto-email: ' . $e->getMessage());
+            }
+        }
+    }
+
+    // A technician just captured the CLIENT's signature in person,
+    // gated by the signer's own 6-digit code — that code (and every
+    // other outstanding link/code for this ticket, both report
+    // versions) has now served its purpose and can't be reused for a
+    // different signer later.
+    if ($which === 'client' && $otpVerification !== null) {
+        \GlpiPlugin\Glpiticketreportsign\Security\SigningToken::invalidateAllForTicket($ticketId);
+    }
+
     Session::addMessageAfterRedirect(
         $which === 'tech'
             ? __('Technician signature saved.', 'glpiticketreportsign')

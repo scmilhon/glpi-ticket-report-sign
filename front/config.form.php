@@ -16,6 +16,7 @@
  */
 
 use GlpiPlugin\Glpiticketreportsign\Config;
+use GlpiPlugin\Glpiticketreportsign\Mail\ReportMailer;
 
 // GLPI 11 emits a stray E_USER_WARNING from
 // Glpi\Agent\Communication\AbstractRequest when a non-XML POST body
@@ -65,6 +66,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'section_header_bg' => $sanitizeHex((string) ($_POST['section_header_bg'] ?? ''), '#E6E6E6'),
         'ticket_id_color'   => $sanitizeHex((string) ($_POST['ticket_id_color']   ?? ''), '#DC0000'),
         'draft_ttl_days'    => max(1, min(365, (int) ($_POST['draft_ttl_days'] ?? 15))),
+        'email_logo_path'   => trim((string) ($_POST['email_logo_path']   ?? '')),
+        'email_footer_text' => (string) ($_POST['email_footer_text'] ?? ''),
     ];
 
     Config::save($clean);
@@ -118,20 +121,72 @@ if (defined('GLPI_PICTURE_DIR') && is_dir(GLPI_PICTURE_DIR)) {
 }
 ksort($candidates);
 
-Html::header(__('Ticket report styles', 'glpiticketreportsign'), $saveUrl, 'config', 'plugins');
-?>
-<div class="container-fluid py-3" style="max-width: 1320px">
-  <h2><?= __('Document styles', 'glpiticketreportsign') ?></h2>
-  <div class="trs-text text-muted">
-    <?= __('Customize the header, footer, colours, disclaimer and draft retention used when generating ticket report PDFs.', 'glpiticketreportsign') ?>
-  </div>
+// Links for the "edit wording in template" menu — one per seeded
+// NotificationTemplate (Setup > Notifications > Notification
+// templates), since that's where each email's actual subject/body
+// wording lives; this page only controls the shared logo/footer.
+// Short labels here are just for this menu — the templates' own
+// (longer) presentable names are what actually shows in that list.
+$emailTemplateLinks = [];
+foreach ([
+    ReportMailer::TEMPLATE_TECH_SIGNED       => __('Technician signed', 'glpiticketreportsign'),
+    ReportMailer::TEMPLATE_CHOOSE_VERSION    => __('Resend chosen version', 'glpiticketreportsign'),
+    ReportMailer::TEMPLATE_CLOSED_UNSIGNED   => __('Closed unsigned', 'glpiticketreportsign'),
+] as $templateName => $shortLabel) {
+    $tpl = new \NotificationTemplate();
+    if ($tpl->getFromDBByCrit(['itemtype' => 'Ticket', 'name' => $templateName])) {
+        $emailTemplateLinks[] = ['label' => $shortLabel, 'url' => \NotificationTemplate::getFormURLWithID($tpl->getID())];
+    }
+}
+if ($emailTemplateLinks === []) {
+    // Not seeded yet for some reason — fall back to the filtered list.
+    $emailTemplateLinks[] = [
+        'label' => __('Notification templates', 'glpiticketreportsign'),
+        'url'   => \NotificationTemplate::getSearchURL() . '?criteria[0][link]=AND&criteria[0][field]=1&criteria[0][searchtype]=contains&criteria[0][value]=' . urlencode('Informe de ticket:'),
+    ];
+}
 
-  <div class="row g-3">
-  <!-- -------- Left column: the form itself ------------------------ -->
-  <div class="col-lg-7">
+Html::header(__('Ticket report styles', 'glpiticketreportsign'), $saveUrl, 'config', 'glpiticketreportsign');
+$pluginInfo = plugin_version_glpiticketreportsign();
+$pluginName = (string) ($pluginInfo['name'] ?? 'Ticket Report & Sign');
+?>
+<div class="container-fluid pb-3" style="margin-top: .125rem;">
+  <h2 class="mb-3">
+    <i class="ti ti-signature me-2"></i>
+    <?= __('Configuration') ?> <?= htmlspecialchars($pluginName, ENT_QUOTES) ?>
+  </h2>
   <form method="post" action="<?= htmlspecialchars($saveUrl) ?>" id="trsConfigForm">
     <input type="hidden" name="_glpi_csrf_token" value="<?= htmlspecialchars($csrf, ENT_QUOTES) ?>">
 
+    <!-- Same markup/classes GLPI's own item tabs use (see e.g. a
+         ticket's left tab list) — vertical nav-tabs on desktop,
+         collapsing into the <select> below on narrow viewports —
+         so this inherits the real theme styling instead of looking
+         like a generic, flat Bootstrap nav-pills list. -->
+    <div class="d-flex card-tabs flex-column flex-md-row vertical">
+      <ul class="nav nav-tabs flex-row flex-md-column d-none d-md-block" id="trsTabsList" role="tablist">
+        <li class="nav-item ms-0">
+          <a class="nav-link justify-content-between px-3 py-2 active" id="trsNavDocument" data-bs-toggle="tab" data-bs-target="#trsTabDocument" href="#" role="tab">
+            <span class="d-flex align-items-center"><i class="ti ti-file-text me-2"></i><?= __('Document', 'glpiticketreportsign') ?></span>
+          </a>
+        </li>
+        <li class="nav-item ms-0">
+          <a class="nav-link justify-content-between px-3 py-2" id="trsNavEmail" data-bs-toggle="tab" data-bs-target="#trsTabEmail" href="#" role="tab">
+            <span class="d-flex align-items-center"><i class="ti ti-mail me-2"></i><?= __('Email', 'glpiticketreportsign') ?></span>
+          </a>
+        </li>
+      </ul>
+      <select class="form-select border-2 rounded-0 rounded-top d-md-none mb-2" id="trsTabsSelect">
+        <option value="trsTabDocument" selected><?= __('Document', 'glpiticketreportsign') ?></option>
+        <option value="trsTabEmail"><?= __('Email', 'glpiticketreportsign') ?></option>
+      </select>
+      <div class="tab-content p-2 pt-3 flex-grow-1 card border-start-0">
+      <div class="tab-pane fade show active" id="trsTabDocument" role="tabpanel">
+      <div class="trs-text text-muted mb-3">
+        <?= __('Customize the header, footer, colours, disclaimer and draft retention used when generating ticket report PDFs.', 'glpiticketreportsign') ?>
+      </div>
+      <div class="row g-3">
+      <div class="col-lg-7">
     <fieldset class="border rounded p-3 mb-4">
       <legend class="float-none w-auto px-2 h6"><?= __('Header — company info', 'glpiticketreportsign') ?></legend>
       <div class="trs-text text-muted small">
@@ -254,20 +309,9 @@ Html::header(__('Ticket report styles', 'glpiticketreportsign'), $saveUrl, 'conf
         </div>
       </div>
     </fieldset>
-
-    <?php if ($canEdit): ?>
-      <div class="d-flex gap-2">
-        <button type="submit" class="btn btn-primary"><?= __('Save') ?></button>
       </div>
-    <?php else: ?>
-      <div class="alert alert-warning">
-        <?= __('Your profile only has read access to these settings.', 'glpiticketreportsign') ?>
-      </div>
-    <?php endif; ?>
-  </form>
-  </div>
-  <!-- -------- Right column: live preview, sticky ------------------- -->
-  <div class="col-lg-5">
+      <!-- -------- Live preview, sticky — Document tab only --------- -->
+      <div class="col-lg-5">
     <div class="card" id="trsPreviewCard" style="position: sticky; top: 10px;">
       <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <strong><i class="ti ti-eye me-1"></i><?= __('Live preview (approximate)', 'glpiticketreportsign') ?></strong>
@@ -308,16 +352,109 @@ Html::header(__('Ticket report styles', 'glpiticketreportsign'), $saveUrl, 'conf
         <div id="trsPvFooter" class="text-center text-muted small mt-3" style="font-style:italic;"></div>
       </div>
     </div>
-  </div>
-  </div>
+      </div>
+      </div>
+      </div>
+      <!-- -------- Email tab ---------------------------------------- -->
+      <div class="tab-pane fade" id="trsTabEmail" role="tabpanel">
+      <div class="trs-text text-muted mb-3">
+        <?= __('Used in the emails this plugin sends (sign requests, resends, closed-without-signature copies) — separate from the PDF logo/footer above, since the email header is dark and usually needs a reversed/white logo.', 'glpiticketreportsign') ?>
+      </div>
+      <div class="row g-3">
+      <div class="col-lg-7">
+      <fieldset class="border rounded p-3 mb-4">
+        <legend class="float-none w-auto px-2 h6"><?= __('Logo', 'glpiticketreportsign') ?></legend>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label"><?= __('Pick from existing GLPI logos', 'glpiticketreportsign') ?></label>
+            <select class="form-select" id="emailLogoPicker" <?= $canEdit ? '' : 'disabled' ?>>
+              <option value=""><?= __('— choose to copy into the path field —', 'glpiticketreportsign') ?></option>
+              <?php foreach ($candidates as $path => $label): ?>
+                <option value="<?= htmlspecialchars($path, ENT_QUOTES) ?>"><?= htmlspecialchars($label, ENT_QUOTES) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label"><?= __('Logo path', 'glpiticketreportsign') ?></label>
+            <input type="text" class="form-control" name="email_logo_path" id="emailLogoPath"
+                   value="<?= htmlspecialchars((string) $cfg['email_logo_path'], ENT_QUOTES) ?>"
+                   <?= $canEdit ? '' : 'disabled' ?>>
+            <div class="form-text">
+              <?= __('Empty shows the company name as text instead of an image.', 'glpiticketreportsign') ?>
+            </div>
+          </div>
+        </div>
+      </fieldset>
+      <fieldset class="border rounded p-3 mb-4">
+        <legend class="float-none w-auto px-2 h6"><?= __('Email footer text', 'glpiticketreportsign') ?></legend>
+        <div class="trs-text text-muted small mb-1">
+          <?= __('Raw HTML, printed at the bottom of every email (company name, address, website…).', 'glpiticketreportsign') ?>
+        </div>
+        <textarea class="form-control" name="email_footer_text" rows="4"
+                  <?= $canEdit ? '' : 'disabled' ?>><?= htmlspecialchars((string) $cfg['email_footer_text']) ?></textarea>
+      </fieldset>
+      </div>
+      <!-- -------- Live preview, sticky — Email tab only ------------- -->
+      <div class="col-lg-5">
+        <div class="card" id="trsEmailPreviewCard" style="position: sticky; top: 10px;">
+          <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <strong><i class="ti ti-eye me-1"></i><?= __('Live preview (approximate)', 'glpiticketreportsign') ?></strong>
+            <span class="badge bg-secondary"><?= __('Not saved — for reference only', 'glpiticketreportsign') ?></span>
+          </div>
+          <div class="card-body">
+            <div class="trs-text text-muted small mb-3">
+              <?= __('Rough mockup of the email header and footer, updated live as you edit the fields on the left. The subject and body wording come from the notification template — see the menu below.', 'glpiticketreportsign') ?>
+            </div>
+            <div style="border:1px solid #ccc; border-radius:6px; overflow:hidden;">
+              <div id="trsEmailPvHeader" style="background:#1a1a1a; padding:16px; text-align:center;">
+                <img id="trsEmailPvLogo" src="" alt="" style="max-height:50px; max-width:100%; display:none;">
+                <div id="trsEmailPvCompanyName" style="color:#fff; font-weight:bold; font-size:16px; display:none;"></div>
+              </div>
+              <div style="padding:20px; font-size:12px; color:#999; text-align:center; font-style:italic; background:#fafafa;">
+                <?= __('(email body — set in the notification template)', 'glpiticketreportsign') ?>
+              </div>
+              <div id="trsEmailPvFooter" style="background:#1a1a1a; color:#aaa; padding:14px; text-align:center; font-size:11px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+      </div>
+      <?php if ($canEdit): ?>
+        <div class="card-footer mx-n2 d-flex">
+          <div class="d-flex align-items-center gap-2 ms-auto">
+            <div class="dropdown" id="trsEmailTemplatesMenu" style="display:none;">
+              <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="ti ti-pencil me-1"></i><?= __('Edit wording in template', 'glpiticketreportsign') ?>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <?php foreach ($emailTemplateLinks as $link): ?>
+                  <li><a class="dropdown-item" href="<?= htmlspecialchars($link['url'], ENT_QUOTES) ?>" target="_blank" rel="noopener"><?= htmlspecialchars($link['label'], ENT_QUOTES) ?></a></li>
+                <?php endforeach; ?>
+              </ul>
+            </div>
+            <button type="submit" class="btn btn-primary">
+              <i class="ti ti-device-floppy"></i>
+              <span><?= __('Save') ?></span>
+            </button>
+          </div>
+        </div>
+      <?php else: ?>
+        <div class="alert alert-warning m-2">
+          <?= __('Your profile only has read access to these settings.', 'glpiticketreportsign') ?>
+        </div>
+      <?php endif; ?>
+      </div>
+    </div>
+  </form>
 
   <?php
   // GLPI's own Setup > Plugins list doesn't reliably surface the
   // 'homepage' value from plugin_version_glpiticketreportsign() for
   // manually-installed plugins on every GLPI version, so we show it
-  // here too — a place we fully control.
-  $pluginInfo = plugin_version_glpiticketreportsign();
-  $homepage   = (string) ($pluginInfo['homepage'] ?? '');
+  // here too — a place we fully control. ($pluginInfo already computed
+  // above, for the page title.)
+  $homepage = (string) ($pluginInfo['homepage'] ?? '');
   ?>
   <div class="trs-text text-muted small mt-4 pt-3 border-top">
     <?= __('Ticket Report & Sign', 'glpiticketreportsign') ?>
@@ -330,11 +467,43 @@ Html::header(__('Ticket report styles', 'glpiticketreportsign'), $saveUrl, 'conf
 
 <script>
 (function () {
+  // Keep the mobile <select> (shown below the md breakpoint, same as
+  // GLPI's own item tabs) in sync with the desktop vertical nav-tabs.
+  var list   = document.getElementById('trsTabsList');
+  var select = document.getElementById('trsTabsSelect');
+  var templatesMenu = document.getElementById('trsEmailTemplatesMenu');
+  if (list && select && window.bootstrap) {
+    list.querySelectorAll('[data-bs-toggle="tab"]').forEach(function (link) {
+      link.addEventListener('shown.bs.tab', function () {
+        select.value = link.getAttribute('data-bs-target').slice(1);
+        // The "edit wording in template" menu only makes sense next
+        // to the Email tab's own fields — hide it otherwise.
+        if (templatesMenu) {
+          templatesMenu.style.display = (link.id === 'trsNavEmail') ? '' : 'none';
+        }
+      });
+    });
+    select.addEventListener('change', function () {
+      var link = list.querySelector('[data-bs-target="#' + select.value + '"]');
+      if (link) { bootstrap.Tab.getOrCreateInstance(link).show(); }
+    });
+  }
+})();
+
+(function () {
   var picker = document.getElementById('logoPicker');
   var path   = document.getElementById('logoPath');
   if (picker && path) {
     picker.addEventListener('change', function () {
       if (picker.value) path.value = picker.value;
+    });
+  }
+
+  var emailPicker = document.getElementById('emailLogoPicker');
+  var emailPath   = document.getElementById('emailLogoPath');
+  if (emailPicker && emailPath) {
+    emailPicker.addEventListener('change', function () {
+      if (emailPicker.value) emailPath.value = emailPicker.value;
     });
   }
 })();
@@ -396,6 +565,31 @@ Html::header(__('Ticket report styles', 'glpiticketreportsign'), $saveUrl, 'conf
     } else if (logoPath !== '') {
       note.textContent = LOGO_PREVIEW_UNAVAILABLE;
     }
+
+    // Email tab's own preview — same field names, different card.
+    var emailLogoPath = fieldVal('email_logo_path');
+    var emailImg  = document.getElementById('trsEmailPvLogo');
+    var emailName = document.getElementById('trsEmailPvCompanyName');
+    if (emailLogoPath.indexOf('pics/') === 0) {
+      emailImg.src = ROOT_DOC + '/' + emailLogoPath;
+      emailImg.style.display = '';
+      emailName.style.display = 'none';
+      emailImg.onerror = function () {
+        emailImg.style.display = 'none';
+        emailName.style.display = '';
+      };
+    } else if (emailLogoPath !== '') {
+      // Custom path outside pics/ — can't preview it here either;
+      // fall back to the company-name text, same as the real email would.
+      emailImg.style.display = 'none';
+      emailName.style.display = '';
+    } else {
+      emailImg.style.display = 'none';
+      emailName.style.display = '';
+    }
+    emailName.textContent = fieldVal('company_name') || ' ';
+
+    document.getElementById('trsEmailPvFooter').innerHTML = fieldVal('email_footer_text');
   }
 
   form.addEventListener('input', update);

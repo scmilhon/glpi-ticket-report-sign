@@ -495,3 +495,120 @@ msgstr "El cliente solo puede firmar su parte."
 
 msgid "Select"
 msgstr "Seleccionar"
+
+msgid "Condensed"
+msgstr "Resumido"
+
+msgid "Full"
+msgstr "Completo"
+
+msgid "Condensed version"
+msgstr "Versión resumida"
+
+msgid "Full version"
+msgstr "Versión completa"
+
+msgid "Full report"
+msgstr "Informe completo"
+
+msgid "Condensed (problem + diagnosis + solution)"
+msgstr "Resumido (problema + diagnóstico + solución)"
+
+msgid "Full history or only problem + diagnosis + solution"
+msgstr "Historial completo o solo problema + diagnóstico + solución"
+
+msgid "Diagnosis follow-up: %s"
+msgstr "Seguimiento de diagnóstico: %s"
+
+msgid "No diagnosis applies to this case"
+msgstr "No aplica diagnóstico para este caso"
+
+msgid "This is the diagnosis for this case"
+msgstr "Este es el diagnóstico de este caso"
+
+msgid "Mark which follow-up is the diagnosis (or check \"no diagnosis applies\") before resolving the ticket."
+msgstr "Marque cuál seguimiento es el diagnóstico (o marque «no aplica diagnóstico») antes de resolver el ticket."
+
+msgid "View in Report"
+msgstr "Ver en el informe"
+
+msgid "No report ready for you yet."
+msgstr "Aún no hay un informe listo para usted."
+
+msgid "Delete saved signature"
+msgstr "Eliminar firma guardada"
+
+msgid "Loaded your saved signature — just save, or clear it to draw a new one."
+msgstr "Se cargó su firma guardada — solo guarde, o bórrela para dibujar una nueva."
+
+msgid "Saved signature removed. Draw a new one next time."
+msgstr "Firma guardada eliminada. Dibuje una nueva la próxima vez."
+
+msgid "Only the client can sign this side — from their own session, or the link emailed to them."
+msgstr "Solo el cliente puede firmar este lado — desde su propia sesión, o el enlace enviado por correo."
+
+msgid "Signed — client confirmation pending"
+msgstr "Firmado — confirmación del cliente pendiente"
+
+msgid "Email branding"
+msgstr "Identidad visual del correo"
+
+msgid "Used in the emails this plugin sends (sign requests, resends, closed-without-signature copies) — separate from the PDF logo/footer above, since the email header is dark and usually needs a reversed/white logo."
+msgstr "Se usa en los correos que envía este plugin (solicitudes de firma, reenvíos, copias de cierre sin firma) — separado del logo/pie del PDF de arriba, ya que el encabezado del correo es oscuro y normalmente necesita un logo invertido/blanco."
+
+msgid "Empty shows the company name as text instead of an image."
+msgstr "Si se deja vacío, se muestra el nombre de la empresa como texto en vez de una imagen."
+
+msgid "Email footer text"
+msgstr "Texto del pie del correo"
+
+msgid "Raw HTML, printed at the bottom of every email (company name, address, website…)."
+msgstr "HTML sin procesar, impreso al final de cada correo (nombre de la empresa, dirección, sitio web…)."
+
+msgid "Document"
+msgstr "Documento"
+
+msgid "Edit wording in template"
+msgstr "Editar texto en la plantilla"
+
+msgid "Rough mockup of the email header and footer, updated live as you edit the fields on the left. The subject and body wording come from the notification template — see the menu below."
+msgstr "Boceto aproximado del encabezado y pie del correo, que se actualiza en vivo mientras edita los campos de la izquierda. El asunto y el cuerpo del correo se editan en la plantilla de notificación — vea el menú de abajo."
+
+msgid "Technician signed"
+msgstr "Técnico firmó"
+
+msgid "Resend chosen version"
+msgstr "Reenvío de versión elegida"
+
+msgid "Closed unsigned"
+msgstr "Cierre sin firma"
+
+msgid "Notification templates"
+msgstr "Plantillas de notificación"
+
+msgid "(email body — set in the notification template)"
+msgstr "(cuerpo del correo — se define en la plantilla de notificación)"
+
+msgid "Invalid or expired verification code. Ask the signer to check their email again."
+msgstr "Código de verificación inválido o vencido. Pídale al firmante que revise nuevamente su correo."
+
+msgid "Ask the signer for the 6-digit code sent to their email and enter it below."
+msgstr "Pídale al firmante el código de 6 dígitos enviado a su correo e ingréselo abajo."
+
+msgid "Verification code"
+msgstr "Código de verificación"
+
+msgid "Signer is not one of the requesters?"
+msgstr "¿La persona que firma no es uno de los solicitantes?"
+
+msgid "Signer email"
+msgstr "Correo del firmante"
+
+msgid "Send code"
+msgstr "Enviar código"
+
+msgid "Verify"
+msgstr "Verificar"
+
+msgid "Signer name"
+msgstr "Nombre del firmante"

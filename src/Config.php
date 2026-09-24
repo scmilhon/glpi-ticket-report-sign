@@ -51,6 +51,14 @@ class Config
             'section_header_bg'   => '#E6E6E6',
             'ticket_id_color'     => '#DC0000',
             'draft_ttl_days'      => 15,
+
+            // Emails (ReportMailer) have their own logo — typically a
+            // white/reversed variant for the dark header — and their
+            // own footer, editable separately from the PDF's above.
+            // Empty by default: same "not read from the GLPI database
+            // — edit them here" rule as the PDF's company info.
+            'email_logo_path'     => '',
+            'email_footer_text'   => '',
         ];
     }
 
@@ -97,6 +105,60 @@ class Config
             'WHERE' => ['id' => 1],
         ])->current();
         return is_array($row) && (int) $row['cpt'] > 0;
+    }
+
+    /**
+     * Turns a configured logo path (as stored in `logo_path` or
+     * `email_logo_path`, e.g. from the picker on front/config.form.php)
+     * into an absolute filesystem path. Shared by the PDF generator
+     * (TicketReportFpdf) and the email logo (Mail\EmailLogo) so both
+     * "Pick from existing GLPI logos" pickers resolve identically.
+     * Handles four forms:
+     *   - Absolute paths (returned as-is when the file exists).
+     *   - Paths starting with "_pictures/" — resolved against
+     *     GLPI_PICTURE_DIR, where GLPI stores uploaded branding.
+     *   - Paths starting with "pics/" — resolved against GLPI's own
+     *     pics/ directory (version-agnostic: GLPI_ROOT/pics on GLPI
+     *     10, GLPI_ROOT/public/pics from GLPI 11 on — see
+     *     plugin_glpiticketreportsign_glpi_pics_dir()).
+     *   - Anything else — resolved against GLPI_ROOT as a last
+     *     resort, for a fully custom path outside pics/.
+     * Returns '' if the configured value is empty or doesn't resolve
+     * to an existing file.
+     */
+    public static function resolveLogoPath(string $configured): string
+    {
+        $configured = trim($configured);
+        if ($configured === '') {
+            return '';
+        }
+        if (is_file($configured)) {
+            return $configured;
+        }
+
+        if (strncmp($configured, '_pictures/', 10) === 0 && defined('GLPI_PICTURE_DIR')) {
+            $abs = rtrim(GLPI_PICTURE_DIR, '/\\')
+                 . DIRECTORY_SEPARATOR
+                 . substr($configured, 10);
+            return is_file($abs) ? $abs : '';
+        }
+
+        if (strncmp($configured, 'pics/', 5) === 0 && function_exists('plugin_glpiticketreportsign_glpi_pics_dir')) {
+            $picsDir = plugin_glpiticketreportsign_glpi_pics_dir();
+            if ($picsDir !== '') {
+                $abs = $picsDir . DIRECTORY_SEPARATOR
+                     . str_replace('/', DIRECTORY_SEPARATOR, substr($configured, 5));
+                if (is_file($abs)) {
+                    return $abs;
+                }
+            }
+        }
+
+        $root = defined('GLPI_ROOT') ? GLPI_ROOT : dirname(__DIR__);
+        $abs  = rtrim($root, '/\\')
+              . DIRECTORY_SEPARATOR
+              . str_replace('/', DIRECTORY_SEPARATOR, ltrim($configured, '/\\'));
+        return is_file($abs) ? $abs : '';
     }
 
     /**
