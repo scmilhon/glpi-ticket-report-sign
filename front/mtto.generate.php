@@ -1,13 +1,12 @@
 <?php
 /**
  * Generates an MTTO (maintenance) report draft: the same content
- * as the regular report plus an EQUIPO INFORMÁTICO section sourced
+ * as the regular report plus an IT EQUIPMENT section sourced
  * from the selected Computer asset in GLPI.
  *
  * POST: tickets_id, computers_id, _glpi_csrf_token
  */
 
-use Computer;
 use GlpiPlugin\Glpiticketreportsign\Pdf\ReportPdf;
 use GlpiPlugin\Glpiticketreportsign\Pdf\ReportStorage;
 use GlpiPlugin\Glpiticketreportsign\Profile;
