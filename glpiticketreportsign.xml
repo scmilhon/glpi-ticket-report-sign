@@ -3,7 +3,7 @@
     <name>Ticket Report &amp; Sign</name>
     <key>glpiticketreportsign</key>
     <state>stable</state>
-    <logo></logo>
+    <logo>https://raw.githubusercontent.com/scmilhon/glpi-ticket-report-sign/main/logo.jpg</logo>
     <description>
         <short>
             <lang id="en">Generate per-ticket PDF reports with follow-ups, solutions, embedded images and a hand-drawn technician signature.</lang>
