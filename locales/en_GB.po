@@ -598,3 +598,192 @@ msgstr "The ticket content changed since the other party signed — their signat
 
 msgid "The ticket content changed since the technician signed. Ask them to review and sign again before you continue."
 msgstr "The ticket content changed since the technician signed. Ask them to review and sign again before you continue."
+
+msgid "CLIENT DATA"
+msgstr "CLIENT DATA"
+
+msgid "Company:"
+msgstr "Company:"
+
+msgid "Requester:"
+msgstr "Requester:"
+
+msgid "Phone:"
+msgstr "Phone:"
+
+msgid "Address:"
+msgstr "Address:"
+
+msgid "Email:"
+msgstr "Email:"
+
+msgid "TICKET DETAILS"
+msgstr "TICKET DETAILS"
+
+msgid "Title:"
+msgstr "Title:"
+
+msgid "Assigned technician:"
+msgstr "Assigned technician:"
+
+msgid "Opening date:"
+msgstr "Opening date:"
+
+msgid "Resolution date:"
+msgstr "Resolution date:"
+
+msgid "New"
+msgstr "New"
+
+msgid "Processing (assigned)"
+msgstr "Processing (assigned)"
+
+msgid "Processing (planned)"
+msgstr "Processing (planned)"
+
+msgid "Pending"
+msgstr "Pending"
+
+msgid "Solved"
+msgstr "Solved"
+
+msgid "Closed"
+msgstr "Closed"
+
+msgid "DESCRIPTION"
+msgstr "DESCRIPTION"
+
+msgid "DIAGNOSIS"
+msgstr "DIAGNOSIS"
+
+msgid "Diagnosis"
+msgstr "Diagnosis"
+
+msgid "FOLLOW-UPS"
+msgstr "FOLLOW-UPS"
+
+msgid "Follow-up #%d"
+msgstr "Follow-up #%d"
+
+msgid "Solution Description:"
+msgstr "Solution Description:"
+
+msgid "Solution #%d"
+msgstr "Solution #%d"
+
+msgid "Proposed"
+msgstr "Proposed"
+
+msgid "Accepted"
+msgstr "Accepted"
+
+msgid "Refused"
+msgstr "Refused"
+
+msgid "IT EQUIPMENT"
+msgstr "IT EQUIPMENT"
+
+msgid "Computer"
+msgstr "Computer"
+
+msgid "Type"
+msgstr "Type"
+
+msgid "Model"
+msgstr "Model"
+
+msgid "Alternate user"
+msgstr "Alternate user"
+
+msgid "Operating system"
+msgstr "Operating system"
+
+msgid "Version"
+msgstr "Version"
+
+msgid "Volumes"
+msgstr "Volumes"
+
+msgid "Mount point"
+msgstr "Mount point"
+
+msgid "Filesystem"
+msgstr "Filesystem"
+
+msgid "Total size"
+msgstr "Total size"
+
+msgid "Free space"
+msgstr "Free space"
+
+msgid "Components"
+msgstr "Components"
+
+msgid "Description"
+msgstr "Description"
+
+msgid "Capacity"
+msgstr "Capacity"
+
+msgid "Processor"
+msgstr "Processor"
+
+msgid "Memory"
+msgstr "Memory"
+
+msgid "Disk"
+msgstr "Disk"
+
+msgid "Graphics card"
+msgstr "Graphics card"
+
+msgid "Network card"
+msgstr "Network card"
+
+msgid "Sound card"
+msgstr "Sound card"
+
+msgid "Motherboard"
+msgstr "Motherboard"
+
+msgid "Power supply"
+msgstr "Power supply"
+
+msgid "Battery"
+msgstr "Battery"
+
+msgid "Optical drive"
+msgstr "Optical drive"
+
+msgid "Generic device"
+msgstr "Generic device"
+
+msgid "PCI device"
+msgstr "PCI device"
+
+msgid "Controller"
+msgstr "Controller"
+
+msgid "Simple card"
+msgstr "Simple card"
+
+msgid "Sensor"
+msgstr "Sensor"
+
+msgid "Firmware"
+msgstr "Firmware"
+
+msgid "Case"
+msgstr "Case"
+
+msgid "SIGNATURES"
+msgstr "SIGNATURES"
+
+msgid "Attachments: %s"
+msgstr "Attachments: %s"
+
+msgid "In progress"
+msgstr "In progress"
+
+msgid "Planned"
+msgstr "Planned"

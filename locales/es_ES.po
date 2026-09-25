@@ -618,3 +618,192 @@ msgstr "El contenido del ticket cambió después de que la otra parte firmó —
 
 msgid "The ticket content changed since the technician signed. Ask them to review and sign again before you continue."
 msgstr "El contenido del ticket cambió después de que el técnico firmó. Pídale que revise y firme de nuevo antes de continuar."
+
+msgid "CLIENT DATA"
+msgstr "DATOS DEL CLIENTE"
+
+msgid "Company:"
+msgstr "Empresa:"
+
+msgid "Requester:"
+msgstr "Solicitante:"
+
+msgid "Phone:"
+msgstr "Teléfono:"
+
+msgid "Address:"
+msgstr "Dirección:"
+
+msgid "Email:"
+msgstr "E-mail:"
+
+msgid "TICKET DETAILS"
+msgstr "DATOS DEL EQUIPO"
+
+msgid "Title:"
+msgstr "Título:"
+
+msgid "Assigned technician:"
+msgstr "Técnico Asignado:"
+
+msgid "Opening date:"
+msgstr "Fecha de apertura:"
+
+msgid "Resolution date:"
+msgstr "Fecha de resolución:"
+
+msgid "New"
+msgstr "Nuevo"
+
+msgid "Processing (assigned)"
+msgstr "En curso (asignado)"
+
+msgid "Processing (planned)"
+msgstr "En curso (planificado)"
+
+msgid "Pending"
+msgstr "En espera"
+
+msgid "Solved"
+msgstr "Resuelto"
+
+msgid "Closed"
+msgstr "Cerrado"
+
+msgid "DESCRIPTION"
+msgstr "DESCRIPCIÓN"
+
+msgid "DIAGNOSIS"
+msgstr "DIAGNÓSTICO"
+
+msgid "Diagnosis"
+msgstr "Diagnóstico"
+
+msgid "FOLLOW-UPS"
+msgstr "SEGUIMIENTOS"
+
+msgid "Follow-up #%d"
+msgstr "Seguimiento #%d"
+
+msgid "Solution Description:"
+msgstr "Descripción de la Solución:"
+
+msgid "Solution #%d"
+msgstr "Solución #%d"
+
+msgid "Proposed"
+msgstr "Propuesta"
+
+msgid "Accepted"
+msgstr "Aceptada"
+
+msgid "Refused"
+msgstr "Rechazada"
+
+msgid "IT EQUIPMENT"
+msgstr "EQUIPO INFORMÁTICO"
+
+msgid "Computer"
+msgstr "Equipo"
+
+msgid "Type"
+msgstr "Tipo"
+
+msgid "Model"
+msgstr "Modelo"
+
+msgid "Alternate user"
+msgstr "Usuario alternativo"
+
+msgid "Operating system"
+msgstr "Sistema operativo"
+
+msgid "Version"
+msgstr "Versión"
+
+msgid "Volumes"
+msgstr "Volúmenes"
+
+msgid "Mount point"
+msgstr "Montaje"
+
+msgid "Filesystem"
+msgstr "Sistema de archivos"
+
+msgid "Total size"
+msgstr "Tamaño total"
+
+msgid "Free space"
+msgstr "Espacio libre"
+
+msgid "Components"
+msgstr "Componentes"
+
+msgid "Description"
+msgstr "Descripción"
+
+msgid "Capacity"
+msgstr "Capacidad"
+
+msgid "Processor"
+msgstr "Procesador"
+
+msgid "Memory"
+msgstr "Memoria"
+
+msgid "Disk"
+msgstr "Disco"
+
+msgid "Graphics card"
+msgstr "Tarjeta gráfica"
+
+msgid "Network card"
+msgstr "Tarjeta de red"
+
+msgid "Sound card"
+msgstr "Tarjeta de sonido"
+
+msgid "Motherboard"
+msgstr "Placa base"
+
+msgid "Power supply"
+msgstr "Fuente de alimentación"
+
+msgid "Battery"
+msgstr "Batería"
+
+msgid "Optical drive"
+msgstr "Unidad óptica"
+
+msgid "Generic device"
+msgstr "Genérico"
+
+msgid "PCI device"
+msgstr "PCI"
+
+msgid "Controller"
+msgstr "Controlador"
+
+msgid "Simple card"
+msgstr "Tarjeta simple"
+
+msgid "Sensor"
+msgstr "Sensor"
+
+msgid "Firmware"
+msgstr "Firmware"
+
+msgid "Case"
+msgstr "Carcasa"
+
+msgid "SIGNATURES"
+msgstr "FIRMAS"
+
+msgid "Attachments: %s"
+msgstr "Adjuntos: %s"
+
+msgid "In progress"
+msgstr "En curso"
+
+msgid "Planned"
+msgstr "Planificado"

@@ -15,18 +15,22 @@ use User;
 
 /**
  * Renders the ticket report with the layout the customer's existing
- * service-order PDF uses:
+ * service-order PDF uses. Every section label below is routed
+ * through this plugin's __() translation domain (see locales/*.po)
+ * and rendered in the active GLPI locale — the names here are the
+ * English source strings, not a fixed on-page language:
  *
  *   - Header on every page: company info (pulled from the ticket's
  *     entity), ticket id in red, date.
- *   - DATOS DEL CLIENTE (entity + requester contact)
- *   - DATOS DEL EQUIPO (ticket title, assignee, dates)
- *   - DESCRIPCIÓN (with attached images)
- *   - SEGUIMIENTOS (each follow-up with author, date, body, images)
- *   - SOLUCIÓN (with attached images)
- *   - FIRMAS — single 190×40mm box split visually in two: the
+ *   - CLIENT DATA (entity + requester contact)
+ *   - TICKET DETAILS (ticket title, assignee, dates)
+ *   - DESCRIPTION (with attached images)
+ *   - FOLLOW-UPS (each follow-up with author, date, body, images)
+ *   - SOLUTION (with attached images)
+ *   - SIGNATURES — single 190×40mm box split visually in two: the
  *     technician's signature on the left, the client's on the right.
- *   - DAÑO INDUCIDO POR EL CLIENTE — boilerplate disclaimer.
+ *   - the admin-configured disclaimer (see Config::get(), not a
+ *     plugin string at all — whatever the admin typed).
  *
  * Signatures arrive as base64 PNG data URLs (signature_pad.js
  * output). They're decoded into temp files and inserted with
@@ -154,33 +158,33 @@ class ReportPdf
         $reqName = $this->actorList((int) $t['id'], \CommonITILActor::REQUESTER, true);
         $reqEml  = $this->actorEmails((int) $t['id'], \CommonITILActor::REQUESTER);
 
-        $this->sectionHeader($pdf, 'DATOS DEL CLIENTE');
+        $this->sectionHeader($pdf, __('CLIENT DATA', 'glpiticketreportsign'));
 
         $pdf->SetFont('Arial', 'B', 9);
         $pdf->Cell(1);
-        $pdf->Cell(23, 5, $this->lat('Empresa:'), 1, 0, 'L');
+        $pdf->Cell(23, 5, $this->lat(__('Company:', 'glpiticketreportsign')), 1, 0, 'L');
         $pdf->SetFont('Arial', '', 10);
         $pdf->Cell(167, 5, $this->lat($entity['name'] ?? '-'), 1, 0, 'L');
         $pdf->Ln();
 
         $pdf->Cell(1);
         $pdf->SetFont('Arial', 'B', 10);
-        $pdf->Cell(23, 5, $this->lat('Solicitante:'), 1, 0, 'L');
+        $pdf->Cell(23, 5, $this->lat(__('Requester:', 'glpiticketreportsign')), 1, 0, 'L');
         $pdf->SetFont('Arial', '', 10);
         $pdf->Cell(77, 5, $this->lat($reqName ?: '-'), 1, 0, 'L');
         $pdf->SetFont('Arial', 'B', 10);
-        $pdf->Cell(20, 5, $this->lat('Teléfono:'), 1, 0, 'L');
+        $pdf->Cell(20, 5, $this->lat(__('Phone:', 'glpiticketreportsign')), 1, 0, 'L');
         $pdf->SetFont('Arial', '', 10);
         $pdf->Cell(70, 5, $this->lat($entity['phonenumber'] ?? '-'), 1, 0, 'L');
         $pdf->Ln();
 
         $pdf->Cell(1);
         $pdf->SetFont('Arial', 'B', 10);
-        $pdf->Cell(23, 5, $this->lat('Dirección:'), 1, 0, 'L');
+        $pdf->Cell(23, 5, $this->lat(__('Address:', 'glpiticketreportsign')), 1, 0, 'L');
         $pdf->SetFont('Arial', '', 10);
         $pdf->Cell(77, 5, $this->lat($entity['address'] ?? '-'), 1, 0, 'L');
         $pdf->SetFont('Arial', 'B', 10);
-        $pdf->Cell(20, 5, $this->lat('E-mail:'), 1, 0, 'L');
+        $pdf->Cell(20, 5, $this->lat(__('Email:', 'glpiticketreportsign')), 1, 0, 'L');
         $pdf->SetFont('Arial', '', 10);
         $pdf->Cell(70, 5, $this->lat($reqEml ?: ($entity['email'] ?? '-')), 1, 0, 'L');
         $pdf->Ln();
@@ -203,29 +207,29 @@ class ReportPdf
             $closed = $this->latestSolutionDate();
         }
 
-        $this->sectionHeader($pdf, 'DATOS DEL EQUIPO');
+        $this->sectionHeader($pdf, __('TICKET DETAILS', 'glpiticketreportsign'));
 
         $pdf->Cell(1);
         $pdf->SetFont('Arial', 'B', 10);
-        $pdf->Cell(14, 5, $this->lat('Título:'), 1, 0, 'L');
+        $pdf->Cell(14, 5, $this->lat(__('Title:', 'glpiticketreportsign')), 1, 0, 'L');
         $pdf->SetFont('Arial', '', 10);
         $pdf->Cell(176, 5, $this->lat((string) ($t['name'] ?? '')), 1, 0, 'L');
         $pdf->Ln();
 
         $pdf->Cell(1);
         $pdf->SetFont('Arial', 'B', 10);
-        $pdf->Cell(36, 5, $this->lat('Técnico Asignado:'), 1, 0, 'L');
+        $pdf->Cell(36, 5, $this->lat(__('Assigned technician:', 'glpiticketreportsign')), 1, 0, 'L');
         $pdf->SetFont('Arial', '', 10);
         $pdf->Cell(154, 5, $this->lat($assignee ?: '-'), 1, 0, 'L');
         $pdf->Ln();
 
         $pdf->Cell(1);
         $pdf->SetFont('Arial', 'B', 10);
-        $pdf->Cell(36, 5, $this->lat('Fecha de apertura:'), 1, 0, 'L');
+        $pdf->Cell(36, 5, $this->lat(__('Opening date:', 'glpiticketreportsign')), 1, 0, 'L');
         $pdf->SetFont('Arial', '', 10);
         $pdf->Cell(55, 5, $this->lat($opened), 1, 0, 'L');
         $pdf->SetFont('Arial', 'B', 10);
-        $pdf->Cell(39, 5, $this->lat('Fecha de resolución:'), 1, 0, 'L');
+        $pdf->Cell(39, 5, $this->lat(__('Resolution date:', 'glpiticketreportsign')), 1, 0, 'L');
         $pdf->SetFont('Arial', '', 10);
         $pdf->Cell(60, 5, $this->lat($closed), 1, 0, 'L');
         $pdf->Ln();
@@ -233,20 +237,20 @@ class ReportPdf
 
     private function statusLabel(int $status): string
     {
-        // The PDF is Spanish-only by design (other section labels —
-        // DATOS DEL CLIENTE, DESCRIPCIÓN, FIRMAS, … — are hard-coded
-        // Spanish too), so we deliberately do NOT use GLPI's
-        // Ticket::getAllStatusArray() here: on some installs that
-        // function returns the English defaults regardless of the
-        // user's locale, which is what the customer was seeing
-        // ("Status: Solved" instead of "Resuelto").
+        // Deliberately NOT using GLPI's Ticket::getAllStatusArray()
+        // here: on some installs that function returns the English
+        // defaults regardless of the user's locale. Routed through
+        // this plugin's own __() domain instead — see locales/*.po —
+        // which is already confirmed working correctly at this same
+        // render time (front/generate.php's toast messages use the
+        // same mechanism in the same request).
         return match ($status) {
-            \Ticket::INCOMING => 'Nuevo',
-            \Ticket::ASSIGNED => 'En curso (asignado)',
-            \Ticket::PLANNED  => 'En curso (planificado)',
-            \Ticket::WAITING  => 'En espera',
-            \Ticket::SOLVED   => 'Resuelto',
-            \Ticket::CLOSED   => 'Cerrado',
+            \Ticket::INCOMING => __('New', 'glpiticketreportsign'),
+            \Ticket::ASSIGNED => __('Processing (assigned)', 'glpiticketreportsign'),
+            \Ticket::PLANNED  => __('Processing (planned)', 'glpiticketreportsign'),
+            \Ticket::WAITING  => __('Pending', 'glpiticketreportsign'),
+            \Ticket::SOLVED   => __('Solved', 'glpiticketreportsign'),
+            \Ticket::CLOSED   => __('Closed', 'glpiticketreportsign'),
             default           => '?',
         };
     }
@@ -298,7 +302,7 @@ class ReportPdf
 
     private function renderDescriptionBlock(FPDF $pdf): void
     {
-        $this->sectionHeader($pdf, 'DESCRIPCIÓN');
+        $this->sectionHeader($pdf, __('DESCRIPTION', 'glpiticketreportsign'));
         $pdf->Cell(1);
         $pdf->SetFont('Arial', '', 10);
         $pdf->MultiCell(190, 5, $this->lat($this->htmlToText((string) $this->ticket->fields['content'])), 1, 'J');
@@ -335,12 +339,12 @@ class ReportPdf
             return;
         }
 
-        $this->sectionHeader($pdf, 'DIAGNÓSTICO');
+        $this->sectionHeader($pdf, __('DIAGNOSIS', 'glpiticketreportsign'));
         $author = self::userLabel((int) ($row['users_id'] ?? 0));
         $when   = $this->fmtDate((string) ($row['date'] ?? ''));
         $this->renderEntryCard(
             $pdf,
-            'Diagnóstico',
+            __('Diagnosis', 'glpiticketreportsign'),
             $author . '  —  ' . $when,
             '',
             (string) ($row['content'] ?? ''),
@@ -382,7 +386,7 @@ class ReportPdf
             return;
         }
 
-        $this->sectionHeader($pdf, 'SEGUIMIENTOS');
+        $this->sectionHeader($pdf, __('FOLLOW-UPS', 'glpiticketreportsign'));
 
         $index = 0;
         foreach ($rows as $row) {
@@ -392,7 +396,7 @@ class ReportPdf
 
             $this->renderEntryCard(
                 $pdf,
-                'Seguimiento #' . $index,
+                sprintf(__('Follow-up #%d', 'glpiticketreportsign'), $index),
                 $author . '  —  ' . $when,
                 '',
                 (string) ($row['content'] ?? ''),
@@ -493,7 +497,7 @@ class ReportPdf
         if ($rows === []) {
             $pdf->Cell(1);
             $pdf->SetFont('Arial', '', 10);
-            $pdf->Cell(190, 25, $this->lat('Descripción de la Solución:'), 1, 1, 'J');
+            $pdf->Cell(190, 25, $this->lat(__('Solution Description:', 'glpiticketreportsign')), 1, 1, 'J');
             return;
         }
 
@@ -509,7 +513,7 @@ class ReportPdf
 
             $this->renderEntryCard(
                 $pdf,
-                'Solución #' . $index,
+                sprintf(__('Solution #%d', 'glpiticketreportsign'), $index),
                 $author . '  —  ' . $when,
                 $state,
                 (string) ($row['content'] ?? ''),
@@ -520,15 +524,15 @@ class ReportPdf
     }
 
     /**
-     * Spanish label for an ITILSolution.status value.
+     * Translated label for an ITILSolution.status value.
      * Constants from CommonITILValidation: PROPOSED=1 / ACCEPTED=2 / REFUSED=3.
      */
     private static function solutionStateLabel(int $status): string
     {
         return match ($status) {
-            1       => 'Propuesta',
-            2       => 'Aceptada',
-            3       => 'Rechazada',
+            1       => __('Proposed', 'glpiticketreportsign'),
+            2       => __('Accepted', 'glpiticketreportsign'),
+            3       => __('Refused', 'glpiticketreportsign'),
             default => '',
         };
     }
@@ -553,19 +557,19 @@ class ReportPdf
             $pdf->AddPage();
         }
 
-        $this->sectionHeader($pdf, 'EQUIPO INFORMÁTICO');
+        $this->sectionHeader($pdf, __('IT EQUIPMENT', 'glpiticketreportsign'));
 
         // ---- Computer ----------------------------------------
         $f         = $computer->fields;
         $typeName  = self::lookupName('glpi_computertypes',  (int) ($f['computertypes_id']  ?? 0));
         $modelName = self::lookupName('glpi_computermodels', (int) ($f['computermodels_id'] ?? 0));
 
-        $this->subHeader($pdf, 'Equipo');
-        $this->kvRow($pdf, 'Nombre',              (string) ($f['name']       ?? '-'));
-        $this->kvRow($pdf, 'Tipo',                $typeName  ?: '-');
-        $this->kvRow($pdf, 'Modelo',              $modelName ?: '-');
-        $this->kvRow($pdf, 'Nº de serie',         (string) ($f['serial']     ?? '-'));
-        $this->kvRow($pdf, 'Usuario alternativo', (string) ($f['contact']    ?? '-'));
+        $this->subHeader($pdf, __('Computer', 'glpiticketreportsign'));
+        $this->kvRow($pdf, __('Name', 'glpiticketreportsign'),           (string) ($f['name']       ?? '-'));
+        $this->kvRow($pdf, __('Type', 'glpiticketreportsign'),           $typeName  ?: '-');
+        $this->kvRow($pdf, __('Model', 'glpiticketreportsign'),          $modelName ?: '-');
+        $this->kvRow($pdf, __('Serial number', 'glpiticketreportsign'),  (string) ($f['serial']     ?? '-'));
+        $this->kvRow($pdf, __('Alternate user', 'glpiticketreportsign'), (string) ($f['contact']    ?? '-'));
 
         // ---- Operating system --------------------------------
         $osRow = $DB->request([
@@ -583,10 +587,10 @@ class ReportPdf
             'LIMIT'  => 1,
         ])->current();
 
-        $this->subHeader($pdf, 'Sistema operativo');
-        $this->kvRow($pdf, 'Nombre',      (string) ($osRow['os_name']    ?? '-'));
-        $this->kvRow($pdf, 'Versión',     (string) ($osRow['os_version'] ?? '-'));
-        $this->kvRow($pdf, 'Nº de serie', (string) ($osRow['lic']        ?? '-'));
+        $this->subHeader($pdf, __('Operating system', 'glpiticketreportsign'));
+        $this->kvRow($pdf, __('Name', 'glpiticketreportsign'),          (string) ($osRow['os_name']    ?? '-'));
+        $this->kvRow($pdf, __('Version', 'glpiticketreportsign'),       (string) ($osRow['os_version'] ?? '-'));
+        $this->kvRow($pdf, __('Serial number', 'glpiticketreportsign'), (string) ($osRow['lic']        ?? '-'));
 
         // ---- Volumes ------------------------------------------
         $volumes = [];
@@ -604,16 +608,16 @@ class ReportPdf
                 'free'  => self::humanMB((int) ($v['freesize']  ?? 0)),
             ];
         }
-        $this->subHeader($pdf, 'Volúmenes');
+        $this->subHeader($pdf, __('Volumes', 'glpiticketreportsign'));
         if ($volumes === []) {
             $this->kvRow($pdf, '', '-');
         } else {
             $pdf->Cell(1);
             $pdf->SetFont('Arial', 'B', 9);
-            $pdf->Cell(60, 5, $this->lat('Montaje'), 1, 0, 'L');
-            $pdf->Cell(40, 5, $this->lat('Sistema de archivos'), 1, 0, 'L');
-            $pdf->Cell(45, 5, $this->lat('Tamaño total'), 1, 0, 'L');
-            $pdf->Cell(45, 5, $this->lat('Espacio libre'), 1, 1, 'L');
+            $pdf->Cell(60, 5, $this->lat(__('Mount point', 'glpiticketreportsign')), 1, 0, 'L');
+            $pdf->Cell(40, 5, $this->lat(__('Filesystem', 'glpiticketreportsign')), 1, 0, 'L');
+            $pdf->Cell(45, 5, $this->lat(__('Total size', 'glpiticketreportsign')), 1, 0, 'L');
+            $pdf->Cell(45, 5, $this->lat(__('Free space', 'glpiticketreportsign')), 1, 1, 'L');
             $pdf->SetFont('Arial', '', 10);
             foreach ($volumes as $v) {
                 $pdf->Cell(1);
@@ -626,15 +630,15 @@ class ReportPdf
 
         // ---- Components ---------------------------------------
         $components = self::loadComponents($cid);
-        $this->subHeader($pdf, 'Componentes');
+        $this->subHeader($pdf, __('Components', 'glpiticketreportsign'));
         if ($components === []) {
             $this->kvRow($pdf, '', '-');
         } else {
             $pdf->Cell(1);
             $pdf->SetFont('Arial', 'B', 9);
-            $pdf->Cell(40,  5, $this->lat('Tipo'),        1, 0, 'L');
-            $pdf->Cell(110, 5, $this->lat('Descripción'), 1, 0, 'L');
-            $pdf->Cell(40,  5, $this->lat('Capacidad'),   1, 1, 'L');
+            $pdf->Cell(40,  5, $this->lat(__('Type', 'glpiticketreportsign')),        1, 0, 'L');
+            $pdf->Cell(110, 5, $this->lat(__('Description', 'glpiticketreportsign')), 1, 0, 'L');
+            $pdf->Cell(40,  5, $this->lat(__('Capacity', 'glpiticketreportsign')),    1, 1, 'L');
             $pdf->SetFont('Arial', '', 10);
             foreach ($components as $c) {
                 $pdf->Cell(1);
@@ -709,28 +713,31 @@ class ReportPdf
         // For each device family, declare:
         //   link  – link table holding the per-item assignment
         //   dev   – device catalog table holding the model designation
-        //   label – Spanish label rendered in the "Tipo" column
+        //   label – translated label rendered in the "Type" column
+        //           (routed through __() here, at call time, so it
+        //           reflects the active locale like the rest of the
+        //           PDF — see locales/*.po)
         //   cap   – column on the LINK table that holds the capacity
         //           (null when the family has no meaningful capacity)
         //   unit  – formatter to apply to the cap value
         $types = [
-            ['link' => 'glpi_items_deviceprocessors',    'dev' => 'glpi_deviceprocessors',    'label' => 'Procesador',             'cap' => 'frequency', 'unit' => 'MHz'],
-            ['link' => 'glpi_items_devicememories',      'dev' => 'glpi_devicememories',      'label' => 'Memoria',                'cap' => 'size',      'unit' => 'MB'],
-            ['link' => 'glpi_items_devicehdds',          'dev' => 'glpi_devicehdds',          'label' => 'Disco',                  'cap' => 'capacity',  'unit' => 'MB'],
-            ['link' => 'glpi_items_devicegraphiccards',  'dev' => 'glpi_devicegraphiccards',  'label' => 'Tarjeta gráfica',        'cap' => 'memory',    'unit' => 'MB'],
-            ['link' => 'glpi_items_devicenetworkcards',  'dev' => 'glpi_devicenetworkcards',  'label' => 'Tarjeta de red',         'cap' => null,        'unit' => null],
-            ['link' => 'glpi_items_devicesoundcards',    'dev' => 'glpi_devicesoundcards',    'label' => 'Tarjeta de sonido',      'cap' => null,        'unit' => null],
-            ['link' => 'glpi_items_devicemotherboards',  'dev' => 'glpi_devicemotherboards',  'label' => 'Placa base',             'cap' => null,        'unit' => null],
-            ['link' => 'glpi_items_devicepowersupplies', 'dev' => 'glpi_devicepowersupplies', 'label' => 'Fuente de alimentación', 'cap' => null,        'unit' => null],
-            ['link' => 'glpi_items_devicebatteries',     'dev' => 'glpi_devicebatteries',     'label' => 'Batería',                'cap' => 'capacity',  'unit' => 'mWh'],
-            ['link' => 'glpi_items_devicedrives',        'dev' => 'glpi_devicedrives',        'label' => 'Unidad óptica',          'cap' => null,        'unit' => null],
-            ['link' => 'glpi_items_devicegenerics',      'dev' => 'glpi_devicegenerics',      'label' => 'Genérico',               'cap' => null,        'unit' => null],
-            ['link' => 'glpi_items_devicepcis',          'dev' => 'glpi_devicepcis',          'label' => 'PCI',                    'cap' => null,        'unit' => null],
-            ['link' => 'glpi_items_devicecontrols',      'dev' => 'glpi_devicecontrols',      'label' => 'Controlador',            'cap' => null,        'unit' => null],
-            ['link' => 'glpi_items_devicesimplecards',   'dev' => 'glpi_devicesimplecards',   'label' => 'Tarjeta simple',         'cap' => null,        'unit' => null],
-            ['link' => 'glpi_items_devicesensors',       'dev' => 'glpi_devicesensors',       'label' => 'Sensor',                 'cap' => null,        'unit' => null],
-            ['link' => 'glpi_items_devicefirmwares',     'dev' => 'glpi_devicefirmwares',     'label' => 'Firmware',               'cap' => null,        'unit' => null],
-            ['link' => 'glpi_items_devicecases',         'dev' => 'glpi_devicecases',         'label' => 'Carcasa',                'cap' => null,        'unit' => null],
+            ['link' => 'glpi_items_deviceprocessors',    'dev' => 'glpi_deviceprocessors',    'label' => __('Processor', 'glpiticketreportsign'),     'cap' => 'frequency', 'unit' => 'MHz'],
+            ['link' => 'glpi_items_devicememories',      'dev' => 'glpi_devicememories',      'label' => __('Memory', 'glpiticketreportsign'),        'cap' => 'size',      'unit' => 'MB'],
+            ['link' => 'glpi_items_devicehdds',          'dev' => 'glpi_devicehdds',          'label' => __('Disk', 'glpiticketreportsign'),          'cap' => 'capacity',  'unit' => 'MB'],
+            ['link' => 'glpi_items_devicegraphiccards',  'dev' => 'glpi_devicegraphiccards',  'label' => __('Graphics card', 'glpiticketreportsign'), 'cap' => 'memory',    'unit' => 'MB'],
+            ['link' => 'glpi_items_devicenetworkcards',  'dev' => 'glpi_devicenetworkcards',  'label' => __('Network card', 'glpiticketreportsign'),  'cap' => null,        'unit' => null],
+            ['link' => 'glpi_items_devicesoundcards',    'dev' => 'glpi_devicesoundcards',    'label' => __('Sound card', 'glpiticketreportsign'),    'cap' => null,        'unit' => null],
+            ['link' => 'glpi_items_devicemotherboards',  'dev' => 'glpi_devicemotherboards',  'label' => __('Motherboard', 'glpiticketreportsign'),   'cap' => null,        'unit' => null],
+            ['link' => 'glpi_items_devicepowersupplies', 'dev' => 'glpi_devicepowersupplies', 'label' => __('Power supply', 'glpiticketreportsign'),  'cap' => null,        'unit' => null],
+            ['link' => 'glpi_items_devicebatteries',     'dev' => 'glpi_devicebatteries',     'label' => __('Battery', 'glpiticketreportsign'),       'cap' => 'capacity',  'unit' => 'mWh'],
+            ['link' => 'glpi_items_devicedrives',        'dev' => 'glpi_devicedrives',        'label' => __('Optical drive', 'glpiticketreportsign'), 'cap' => null,        'unit' => null],
+            ['link' => 'glpi_items_devicegenerics',      'dev' => 'glpi_devicegenerics',      'label' => __('Generic device', 'glpiticketreportsign'), 'cap' => null,       'unit' => null],
+            ['link' => 'glpi_items_devicepcis',          'dev' => 'glpi_devicepcis',          'label' => __('PCI device', 'glpiticketreportsign'),    'cap' => null,        'unit' => null],
+            ['link' => 'glpi_items_devicecontrols',      'dev' => 'glpi_devicecontrols',      'label' => __('Controller', 'glpiticketreportsign'),    'cap' => null,        'unit' => null],
+            ['link' => 'glpi_items_devicesimplecards',   'dev' => 'glpi_devicesimplecards',   'label' => __('Simple card', 'glpiticketreportsign'),   'cap' => null,        'unit' => null],
+            ['link' => 'glpi_items_devicesensors',       'dev' => 'glpi_devicesensors',       'label' => __('Sensor', 'glpiticketreportsign'),        'cap' => null,        'unit' => null],
+            ['link' => 'glpi_items_devicefirmwares',     'dev' => 'glpi_devicefirmwares',     'label' => __('Firmware', 'glpiticketreportsign'),      'cap' => null,        'unit' => null],
+            ['link' => 'glpi_items_devicecases',         'dev' => 'glpi_devicecases',         'label' => __('Case', 'glpiticketreportsign'),          'cap' => null,        'unit' => null],
         ];
 
         $out = [];
@@ -802,7 +809,7 @@ class ReportPdf
     {
         // The signature box contains everything in one bordered
         // rectangle: signatures on top, separator line, then the
-        // signer name and role (Técnico / Cliente). Total block
+        // signer name and role (Technician / Client). Total block
         // height: 6mm (section bar) + 60mm (box) + 4mm (gap).
         //
         // Reserve that full height BEFORE drawing the section bar.
@@ -814,7 +821,7 @@ class ReportPdf
         if ($pdf->GetY() + $blockH > $bottomLimit) {
             $pdf->AddPage();
         }
-        $this->sectionHeader($pdf, 'FIRMAS');
+        $this->sectionHeader($pdf, __('SIGNATURES', 'glpiticketreportsign'));
 
         $boxX  = $pdf->GetX() + 1;
         $boxY  = $pdf->GetY();
@@ -863,8 +870,8 @@ class ReportPdf
         // Roles below the names, smaller and italic for hierarchy.
         $pdf->SetXY($boxX, $lineY + 8);
         $pdf->SetFont('Arial', 'I', 8);
-        $pdf->Cell($halfW, 5, $this->lat('Técnico'), 0, 0, 'C');
-        $pdf->Cell($halfW, 5, $this->lat('Cliente'), 0, 0, 'C');
+        $pdf->Cell($halfW, 5, $this->lat(__('Technician', 'glpiticketreportsign')), 0, 0, 'C');
+        $pdf->Cell($halfW, 5, $this->lat(__('Client', 'glpiticketreportsign')), 0, 0, 'C');
 
         // Move the cursor below the whole box for the next section.
         $pdf->SetY($boxY + $boxH + 4);
@@ -960,7 +967,7 @@ class ReportPdf
         if ($names !== []) {
             $pdf->Cell(1);
             $pdf->SetFont('Arial', 'I', 9);
-            $pdf->MultiCell(190, 4, $this->lat('Adjuntos: ' . implode(', ', $names)));
+            $pdf->MultiCell(190, 4, $this->lat(sprintf(__('Attachments: %s', 'glpiticketreportsign'), implode(', ', $names))));
         }
     }
 
@@ -1163,7 +1170,7 @@ class ReportPdf
     private static function userLabel(int $userId): string
     {
         if ($userId <= 0) {
-            return 'Sistema';
+            return __('System', 'glpiticketreportsign');
         }
         $u = new User();
         if (!$u->getFromDB($userId)) {

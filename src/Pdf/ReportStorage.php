@@ -123,7 +123,7 @@ class ReportStorage
     /**
      * "23690 Resuelto - Solución Aplicada - nes.pdf"
      *
-     * Built from: ticket id, the Spanish status label, the latest
+     * Built from: ticket id, the translated status label, the latest
      * ITILSolution's solution-type name (skipped when the ticket
      * has no solution yet or the technician didn't pick a type),
      * and the "nes" tag the customer asked for. Sanitised against
@@ -134,7 +134,7 @@ class ReportStorage
         global $DB;
 
         $ticketId    = (int) $ticket->getID();
-        $statusName  = self::spanishStatus((int) ($ticket->fields['status'] ?? 0));
+        $statusName  = self::statusLabel((int) ($ticket->fields['status'] ?? 0));
         $solutionType = '';
 
         $row = $DB->request([
@@ -164,15 +164,23 @@ class ReportStorage
         return $name . '.pdf';
     }
 
-    private static function spanishStatus(int $status): string
+    /**
+     * Translated status word used in the downloaded filename — same
+     * __() domain as ReportPdf's own statusLabel(), so the filename
+     * matches the active locale the same way the PDF body does. Kept
+     * as its own (shorter, filename-safe) set of labels rather than
+     * reusing ReportPdf::statusLabel(), since "Processing (assigned)"
+     * would need extra sanitising for the parentheses.
+     */
+    private static function statusLabel(int $status): string
     {
         return match ($status) {
-            \Ticket::INCOMING => 'Nuevo',
-            \Ticket::ASSIGNED => 'En curso',
-            \Ticket::PLANNED  => 'Planificado',
-            \Ticket::WAITING  => 'En espera',
-            \Ticket::SOLVED   => 'Resuelto',
-            \Ticket::CLOSED   => 'Cerrado',
+            \Ticket::INCOMING => __('New', 'glpiticketreportsign'),
+            \Ticket::ASSIGNED => __('In progress', 'glpiticketreportsign'),
+            \Ticket::PLANNED  => __('Planned', 'glpiticketreportsign'),
+            \Ticket::WAITING  => __('Pending', 'glpiticketreportsign'),
+            \Ticket::SOLVED   => __('Solved', 'glpiticketreportsign'),
+            \Ticket::CLOSED   => __('Closed', 'glpiticketreportsign'),
             default           => '',
         };
     }
