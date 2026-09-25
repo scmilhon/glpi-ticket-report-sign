@@ -237,6 +237,19 @@ class ReportStorage
             ]);
         }
 
+        // The superseded Document itself (row + file on disk) — not
+        // just its link — is now unreferenced by anything: every save
+        // (draft, re-sign, …) mints a brand new Document, so nothing
+        // else in GLPI points at $previousDocId once this row stops
+        // doing so. Left alone, every signature save/resend leaves
+        // one orphaned PDF behind permanently, readable by anyone
+        // with the core `document` READ right in the entity for as
+        // long as the file exists on disk. Document::delete() (not a
+        // raw unlink) so its own dedup-safe file removal runs.
+        if ($previousDocId > 0 && $previousDocId !== $newDocId) {
+            self::purgeIfUnreferenced($previousDocId);
+        }
+
         if ($shouldAttach) {
             $DB->insert('glpi_documents_items', [
                 'documents_id'      => $newDocId,
@@ -254,6 +267,32 @@ class ReportStorage
                 // Default (0 / NOTSET) renders on the left.
                 'timeline_position' => \CommonITILObject::TIMELINE_RIGHT,
             ]);
+        }
+    }
+
+    /**
+     * Deletes $docId (row + file) via GLPI's own Document::delete(),
+     * but only once nothing in this plugin's own reports table still
+     * points at it. Document ids this plugin creates are never
+     * shared across rows (storeDocumentManually() mints a fresh one
+     * on every save), so this should always find zero references —
+     * checked anyway rather than assumed, since deleting the wrong
+     * document would take a live report's PDF down with it.
+     */
+    private static function purgeIfUnreferenced(int $docId): void
+    {
+        global $DB;
+        $stillUsed = $DB->request([
+            'COUNT'  => 'cpt',
+            'FROM'   => 'glpi_plugin_glpiticketreportsign_reports',
+            'WHERE'  => ['documents_id' => $docId],
+        ])->current();
+        if (is_array($stillUsed) && (int) ($stillUsed['cpt'] ?? 0) > 0) {
+            return;
+        }
+        $doc = new Document();
+        if ($doc->getFromDB($docId)) {
+            $doc->delete(['id' => $docId], true);
         }
     }
 

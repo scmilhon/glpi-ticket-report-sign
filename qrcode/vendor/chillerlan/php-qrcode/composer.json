@@ -1,5 +1,7 @@
 {
+	"//": "version + the php constraint below (widened from upstream's php:^7.2) are patched onto this vendored copy by glpiticketreportsign's own composer.json — see its top-level comment.",
 	"name": "chillerlan/php-qrcode",
+	"version": "3.4.0",
 	"description": "A QR code generator. PHP 7.2+",
 	"homepage": "https://github.com/chillerlan/php-qrcode",
 	"license": "MIT",
@@ -24,7 +26,7 @@
 		}
 	],
 	"require": {
-		"php": "^7.2",
+		"php": "^7.2 || ^8.0",
 		"ext-mbstring": "*",
 		"chillerlan/php-settings-container": "^1.2"
 	},

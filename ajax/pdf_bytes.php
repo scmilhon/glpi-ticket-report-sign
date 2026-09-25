@@ -50,7 +50,10 @@ if ($token !== '') {
     }
 } else {
     Session::checkLoginUser();
-    if (!Authorizer::canActOnTicket((int) $report->fields['tickets_id'])) {
+    // Same predicate as front/download.php, which serves the same
+    // bytes: revoking the plugin's READ right must actually revoke
+    // access to report content, not just hide the download link.
+    if (!Profile::hasRight(READ) || !Authorizer::canActOnTicket((int) $report->fields['tickets_id'])) {
         http_response_code(403);
         exit('forbidden');
     }

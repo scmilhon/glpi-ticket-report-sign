@@ -5,11 +5,32 @@
     "license": "GPL-3.0-only",
     "require": {
         "php": ">=8.2",
-        "ext-gd": "*"
+        "ext-gd": "*",
+        "setasign/fpdf": "1.83",
+        "chillerlan/php-qrcode": "3.4.0",
+        "chillerlan/php-settings-container": "1.2.1"
     },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "pdf",
+            "options": { "symlink": false }
+        },
+        {
+            "type": "path",
+            "url": "qrcode/vendor/chillerlan/php-qrcode",
+            "options": { "symlink": false }
+        },
+        {
+            "type": "path",
+            "url": "qrcode/vendor/chillerlan/php-settings-container",
+            "options": { "symlink": false }
+        }
+    ],
     "autoload": {
         "psr-4": {
             "GlpiPlugin\\Glpiticketreportsign\\": "src/"
         }
-    }
+    },
+    "//": "setasign/fpdf and chillerlan/php-qrcode are NOT loaded from a root vendor/ — setup.php require_once's pdf/fpdf.php and qrcode/vendor/autoload.php directly, matching the actual bundled copies on disk, so audit tooling sees no gap between what's installed and what's declared. This top-level composer.json exists so a root-level `composer audit`/`composer show` can actually see them (they were previously invisible to any tool that doesn't know to look inside pdf/ and qrcode/vendor/chillerlan/ for their own nested composer.json files) — running `composer install` here is unnecessary for the plugin to work, since both are already present. The two nested chillerlan composer.json files have their own require.php widened from the upstream ^7.2 (see the comment there) so this resolves at all against the plugin's own php:>=8.2 floor."
 }

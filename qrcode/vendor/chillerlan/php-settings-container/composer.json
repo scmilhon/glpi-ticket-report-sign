@@ -1,5 +1,7 @@
 {
+	"//": "version + the php constraint below (widened from upstream's php:^7.2) are patched onto this vendored copy by glpiticketreportsign's own composer.json — see its top-level comment.",
 	"name": "chillerlan/php-settings-container",
+	"version": "1.2.1",
 	"description": "A container class for immutable settings objects. Not a DI container. PHP 7.2+",
 	"homepage": "https://github.com/chillerlan/php-settings-container",
 	"license": "MIT",
@@ -20,7 +22,7 @@
 		"source": "https://github.com/chillerlan/php-settings-container"
 	},
 	"require": {
-		"php": "^7.2",
+		"php": "^7.2 || ^8.0",
 		"ext-json": "*"
 	},
 	"require-dev": {

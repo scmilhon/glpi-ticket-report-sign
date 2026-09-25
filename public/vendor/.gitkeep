@@ -1,14 +1,15 @@
-Place the following files here (download from official sources):
-
-  pdf.min.js                — pdf.js distribution (mozilla/pdf.js, build/pdf.min.js)
-  pdf.worker.min.js         — pdf.js worker (build/pdf.worker.min.js)
-  signature_pad.umd.min.js  — szimek/signature_pad UMD build
-
-Versions tested:
-  pdf.js 4.x
-  signature_pad 5.x
+pdf.min.js, pdf.worker.min.js and signature_pad.umd.min.js now ship
+in this directory by default (pdf.js 3.11.174, signature_pad 5.0.4 —
+see src/Vendor/Assets.php's PDFJS_VERSION/SIGPAD_VERSION constants,
+which must stay in sync with whatever's actually sitting here).
 
 Why vendored: GLPI installations can run on isolated networks where
-CDN access is blocked. Loading from the plugin's own public/vendor
-keeps the feature offline-friendly. If you prefer CDNs, edit the
-vendor URLs in src/Integration/TicketTab.php and front/sign.php.
+CDN access is blocked, and loading arbitrary third-party JS from a
+CDN inside an authenticated GLPI session on every Report tab view is
+its own exposure (a compromised/hijacked CDN gets script execution
+with the viewer's session cookie) — see Assets::urls()'s docblock.
+Assets::urls() only falls back to cdnjs.cloudflare.com (with
+Subresource Integrity pinning — see emitPreviewScript()) if one of
+these three files is ever missing; delete a file here to intentionally
+re-enable that fallback for it, or replace these with a newer version
+(update PDFJS_VERSION/SIGPAD_VERSION to match).

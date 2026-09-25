@@ -133,9 +133,14 @@ class Authorizer
             return false;
         }
 
-        // Super-admin always allowed.
-        if (!empty($_SESSION['glpiactiveprofile']['interface'])
-            && (int) ($_SESSION['glpiactiveprofile']['id'] ?? 0) === 4) {
+        // Super-admin always allowed. Checked by capability, not by
+        // the stock profile's row id (4) — that id is an
+        // autoincrement value, not a guarantee, and would silently
+        // stop meaning "super-admin" on an instance where the stock
+        // profiles were reorganised or migrated from an older GLPI.
+        // `config` UPDATE is held only by Super-Admin among the stock
+        // profiles (unlike its READ, which Read-Only also has).
+        if (\Session::haveRight('config', UPDATE)) {
             return true;
         }
 

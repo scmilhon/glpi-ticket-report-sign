@@ -1,0 +1,10 @@
+# Vendored third-party builds — never line-ending-normalized. These
+# are pinned to an exact upstream version (see src/Vendor/Assets.php's
+# PDFJS_VERSION/SIGPAD_VERSION and public/vendor/.gitkeep); any CRLF
+# rewrite would change their bytes without changing what they do,
+# which is exactly the kind of silent diff that makes "is this still
+# the version we audited" unanswerable.
+public/vendor/*.js -text
+pdf/fpdf.php -text
+pdf/font/** -text
+qrcode/vendor/** -text

@@ -79,12 +79,16 @@ if ($query !== '') {
         'WHERE'  => [
             'c.is_deleted' => 0,
             'c.is_template' => 0,
+            // Without this, any technician authorised on ONE ticket
+            // could enumerate every computer in every entity of the
+            // instance by serial/name/inventory number — exactly the
+            // identifiers an attacker would want to pivot with.
             'OR' => [
                 ['c.serial'      => ['LIKE', '%' . $query . '%']],
                 ['c.otherserial' => ['LIKE', '%' . $query . '%']],
                 ['c.name'        => ['LIKE', '%' . $query . '%']],
             ],
-        ],
+        ] + getEntitiesRestrictCriteria('c', '', '', true),
         'ORDER'  => 'c.name ASC',
         'LIMIT'  => 30,
     ]);

@@ -109,22 +109,25 @@ class Config
 
     /**
      * Turns a configured logo path (as stored in `logo_path` or
-     * `email_logo_path`, e.g. from the picker on front/config.form.php)
-     * into an absolute filesystem path. Shared by the PDF generator
-     * (TicketReportFpdf) and the email logo (Mail\EmailLogo) so both
-     * "Pick from existing GLPI logos" pickers resolve identically.
-     * Handles four forms:
-     *   - Absolute paths (returned as-is when the file exists).
-     *   - Paths starting with "_pictures/" — resolved against
-     *     GLPI_PICTURE_DIR, where GLPI stores uploaded branding.
-     *   - Paths starting with "pics/" — resolved against GLPI's own
-     *     pics/ directory (version-agnostic: GLPI_ROOT/pics on GLPI
-     *     10, GLPI_ROOT/public/pics from GLPI 11 on — see
-     *     plugin_glpiticketreportsign_glpi_pics_dir()).
-     *   - Anything else — resolved against GLPI_ROOT as a last
-     *     resort, for a fully custom path outside pics/.
-     * Returns '' if the configured value is empty or doesn't resolve
-     * to an existing file.
+     * `email_logo_path`) into an absolute filesystem path. Shared by
+     * the PDF generator (TicketReportFpdf) and the email logo
+     * (Mail\EmailLogo) so both "Pick from existing GLPI logos"
+     * pickers resolve identically.
+     *
+     * The field is free text (front/config.form.php:240/379) —
+     * the picker only ever writes "pics/logos/…" or "_pictures/…"
+     * into it (see its $candidates array), but nothing stops a UPDATE-
+     * right holder from typing something else. Only those same two
+     * prefixes are ever resolved, each constrained with realpath() to
+     * land inside the directory it names — an absolute path, or a
+     * "pics/../../etc/passwd"-shaped one, resolves to '' rather than
+     * being read. That means only image files already reachable
+     * through GLPI's own logo pickers can ever end up embedded in a
+     * report or email.
+     *
+     * Returns '' if the configured value is empty, uses neither
+     * prefix, escapes its base directory, or doesn't resolve to an
+     * existing file.
      */
     public static function resolveLogoPath(string $configured): string
     {
@@ -132,33 +135,43 @@ class Config
         if ($configured === '') {
             return '';
         }
-        if (is_file($configured)) {
-            return $configured;
-        }
 
         if (strncmp($configured, '_pictures/', 10) === 0 && defined('GLPI_PICTURE_DIR')) {
-            $abs = rtrim(GLPI_PICTURE_DIR, '/\\')
-                 . DIRECTORY_SEPARATOR
-                 . substr($configured, 10);
-            return is_file($abs) ? $abs : '';
+            return self::containedFile(GLPI_PICTURE_DIR, substr($configured, 10));
         }
 
         if (strncmp($configured, 'pics/', 5) === 0 && function_exists('plugin_glpiticketreportsign_glpi_pics_dir')) {
             $picsDir = plugin_glpiticketreportsign_glpi_pics_dir();
             if ($picsDir !== '') {
-                $abs = $picsDir . DIRECTORY_SEPARATOR
-                     . str_replace('/', DIRECTORY_SEPARATOR, substr($configured, 5));
-                if (is_file($abs)) {
-                    return $abs;
-                }
+                return self::containedFile($picsDir, substr($configured, 5));
             }
         }
 
-        $root = defined('GLPI_ROOT') ? GLPI_ROOT : dirname(__DIR__);
-        $abs  = rtrim($root, '/\\')
-              . DIRECTORY_SEPARATOR
-              . str_replace('/', DIRECTORY_SEPARATOR, ltrim($configured, '/\\'));
-        return is_file($abs) ? $abs : '';
+        return '';
+    }
+
+    /**
+     * realpath($base/$relative), but only when the result is actually
+     * inside $base (blocks "../" escaping the directory) and names a
+     * real file. Returns '' otherwise.
+     */
+    private static function containedFile(string $base, string $relative): string
+    {
+        $baseReal = realpath($base);
+        if ($baseReal === false) {
+            return '';
+        }
+        $candidate = rtrim($baseReal, '/\\') . DIRECTORY_SEPARATOR
+                   . str_replace('/', DIRECTORY_SEPARATOR, ltrim($relative, '/\\'));
+        $real = realpath($candidate);
+        if ($real === false || !is_file($real)) {
+            return '';
+        }
+        $baseWithSep = rtrim($baseReal, '/\\') . DIRECTORY_SEPARATOR;
+        if (strncmp($real, $baseWithSep, strlen($baseWithSep)) !== 0) {
+            return '';
+        }
+        return $real;
     }
 
     /**

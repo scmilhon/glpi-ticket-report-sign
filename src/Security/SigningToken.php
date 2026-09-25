@@ -6,10 +6,11 @@ namespace GlpiPlugin\Glpiticketreportsign\Security;
  *
  * Format: base64url("{reportId}.{exp}.{nonce}.{hmac}")
  *
- * The HMAC is keyed with GLPIKEY (or a derivative); the token's
- * SHA-256 is also persisted in glpi_plugin_glpiticketreportsign_signlinks
- * so we can mark it consumed (single-use) and so revocation works
- * even if the secret is rotated.
+ * The HMAC is keyed with the install's real security key
+ * (\GLPIKey::get(), see secret()); the token's SHA-256 is also
+ * persisted in glpi_plugin_glpiticketreportsign_signlinks so we can
+ * mark it consumed (single-use) and so revocation works even if the
+ * secret is rotated.
  */
 class SigningToken
 {
@@ -191,16 +192,33 @@ class SigningToken
 
     private static function secret(): string
     {
-        // GLPIKEY is the framework's installation secret; if it isn't
-        // exposed in this context we fall back to a configured key
-        // file under GLPI_CONFIG_DIR. Both are tied to the install,
-        // not to source code, so tokens don't leak via git history.
-        if (defined('GLPIKEY') && is_string(GLPIKEY) && GLPIKEY !== '') {
-            return 'tr.' . GLPIKEY;
+        // \GLPIKey::get() is the install's REAL per-instance secret —
+        // generated once and stored outside the web root under
+        // GLPI_CONFIG_DIR/glpicrypt.key. This is deliberately NOT the
+        // GLPIKEY constant: that's a literal hardcoded in GLPI's own
+        // public source (src/autoload/constants.php), identical on
+        // every GLPI installation in the world — it's only
+        // GLPIKey::getLegacyKey()'s fallback for when no real key
+        // file exists yet, and using it here would make the HMAC
+        // forgeable by anyone who can read GLPI's own source. Purpose-
+        // labelled via HKDF-style domain separation (RFC 5869 §3.2)
+        // rather than reused as-is, so this key is independent of
+        // whatever else GLPIKey::get() encrypts.
+        if (class_exists(\GLPIKey::class)) {
+            $key = (new \GLPIKey())->get();
+            if (is_string($key) && $key !== '') {
+                return hash_hmac('sha256', 'glpiticketreportsign/signlink/v1', $key);
+            }
         }
+        // \GLPIKey unavailable (unlikely on a supported GLPI, but
+        // keep the plugin working rather than fataling) — read the
+        // same key file directly.
         $keyFile = (defined('GLPI_CONFIG_DIR') ? GLPI_CONFIG_DIR : __DIR__) . '/glpicrypt.key';
         if (is_file($keyFile)) {
-            return 'tr.' . (string) file_get_contents($keyFile);
+            $key = (string) file_get_contents($keyFile);
+            if ($key !== '') {
+                return hash_hmac('sha256', 'glpiticketreportsign/signlink/v1', $key);
+            }
         }
         // Last-ditch: derive from DB credentials hash. NEVER ideal, but
         // never empty either, so signature always validates locally.

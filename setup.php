@@ -31,27 +31,40 @@ define('PLUGIN_GLPITICKETREPORTSIGN_MAX_GLPI', '12.0.10');
  * into the response BEFORE our redirect headers, breaking form
  * submission with a "Start tag expected" XML error page.
  *
- * Installed at setup.php load time (very early in GLPI's bootstrap)
- * and chained to whatever handler GLPI installed previously, so we
- * never silence anything else.
+ * setup.php is loaded on EVERY GLPI request while this plugin is
+ * active — installing the handler unconditionally at load time (as
+ * this used to) would silence that same warning instance-wide,
+ * including on the real inventory-agent submissions it's meant to be
+ * diagnostic for. Scoped instead to requests that are actually for
+ * one of this plugin's own front/ or ajax/ controllers — the only
+ * place the leaked-HTML-before-redirect failure mode can happen —
+ * via the request path, which is already known by the time setup.php
+ * runs (GLPI's own bootstrap loads every active plugin's setup.php
+ * as part of handling the current request, before that request's own
+ * controller code resumes). Chained to whatever handler GLPI already
+ * installed, so on the requests it does apply to it still never
+ * silences anything else.
  */
-$plugin_glpiticketreportsign_prev_error_handler = set_error_handler(
-    function (int $errno, string $errstr, string $errfile = '', int $errline = 0) use (&$plugin_glpiticketreportsign_prev_error_handler) {
-        $isAgentXmlSniff = $errno === E_USER_WARNING
-            && (
-                str_contains($errfile, 'AbstractRequest')
-                || str_contains($errstr, 'Start tag expected')
-                || str_contains($errstr, "'<' was not found")
-            );
-        if ($isAgentXmlSniff) {
-            return true; // swallow
+$plugin_glpiticketreportsign_request_path = (string) ($_SERVER['SCRIPT_NAME'] ?? $_SERVER['PHP_SELF'] ?? '');
+if (preg_match('#/plugins/glpiticketreportsign/(front|ajax)/#', $plugin_glpiticketreportsign_request_path)) {
+    $plugin_glpiticketreportsign_prev_error_handler = set_error_handler(
+        function (int $errno, string $errstr, string $errfile = '', int $errline = 0) use (&$plugin_glpiticketreportsign_prev_error_handler) {
+            $isAgentXmlSniff = $errno === E_USER_WARNING
+                && (
+                    str_contains($errfile, 'AbstractRequest')
+                    || str_contains($errstr, 'Start tag expected')
+                    || str_contains($errstr, "'<' was not found")
+                );
+            if ($isAgentXmlSniff) {
+                return true; // swallow
+            }
+            if (is_callable($plugin_glpiticketreportsign_prev_error_handler)) {
+                return ($plugin_glpiticketreportsign_prev_error_handler)($errno, $errstr, $errfile, $errline);
+            }
+            return false; // let PHP's default handling run
         }
-        if (is_callable($plugin_glpiticketreportsign_prev_error_handler)) {
-            return ($plugin_glpiticketreportsign_prev_error_handler)($errno, $errstr, $errfile, $errline);
-        }
-        return false; // let PHP's default handling run
-    }
-);
+    );
+}
 
 /**
  * Detects whether the running GLPI core declares $rightname (on the

@@ -75,6 +75,15 @@ if (!$computer->getFromDB($computersId)) {
     Session::addMessageAfterRedirect(__('Computer not found', 'glpiticketreportsign'), false, ERROR);
     Html::back();
 }
+// $computersId is caller-supplied and otherwise only checked for
+// existing — can() adds both the actual asset right and entity scope,
+// so a technician authorised on this ticket can't pull another
+// entity's inventory (OS, disks, components — see
+// ReportPdf::loadComponents()) into the report by posting an
+// unrelated computer id.
+if (!$computer->can($computersId, READ)) {
+    Html::displayRightError();
+}
 
 try {
     $bytes = (new ReportPdf(

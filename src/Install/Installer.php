@@ -18,6 +18,18 @@ use Migration;
  *     tokens emailed to a signer; one row per outstanding link.
  *     Used as a server-side allow-list so a token can be revoked
  *     or marked single-use.
+ *
+ * The createXTable() methods below issue raw CREATE TABLE SQL through
+ * $DB->doQuery() rather than the Migration helper — deliberately, not
+ * an oversight: Migration has no table-creation method at all (see
+ * its addField()/changeField()/dropField()/addKey()/renameTable()/
+ * dropTable() — everything there assumes the table already exists),
+ * so a hand-written CREATE TABLE is the same pattern GLPI core's own
+ * plugins use. Every value interpolated into those strings is a
+ * literal class constant, never request or database data — not
+ * user-reachable. renameTable() and dropTable() (both real Migration
+ * methods) ARE used everywhere below that isn't initial creation —
+ * see migrateLegacyPluginKey() and uninstall().
  */
 class Installer
 {
@@ -69,7 +81,13 @@ class Installer
         ];
         foreach ($tableRenames as $old => $new) {
             if ($this->db->tableExists($old) && !$this->db->tableExists($new)) {
-                $this->db->doQuery('RENAME TABLE `' . $old . '` TO `' . $new . '`');
+                // Migration::renameTable() does its own identical
+                // existence check before issuing the same RENAME
+                // TABLE — going through it (rather than a raw
+                // doQuery()) also clears any forced table name and
+                // keeps its own buffered schema-change bookkeeping in
+                // sync, which this bypassed before.
+                $this->migration->renameTable($old, $new);
             }
         }
 
@@ -440,6 +458,7 @@ class Installer
 
     public function uninstall(): void
     {
+        $this->purgeReportDocuments();
         foreach ([
             'glpi_plugin_glpiticketreportsign_reports',
             'glpi_plugin_glpiticketreportsign_signlinks',
@@ -447,12 +466,45 @@ class Installer
             Diagnosis::TABLE,
             SavedSignature::TABLE,
         ] as $table) {
-            if ($this->db->tableExists($table)) {
-                $this->db->doQuery('DROP TABLE `' . $table . '`');
-            }
+            // Migration::dropTable() does its own existence check —
+            // executes immediately (not one of its buffered
+            // operations), so no executeMigration() call is needed.
+            $this->migration->dropTable($table);
         }
         $this->dropNotificationTemplates();
         Profile::dropRights();
+    }
+
+    /**
+     * Every report's Document (row + file on disk) is purged before
+     * the table that references it is dropped — otherwise uninstalling
+     * the plugin leaves every generated PDF (including any
+     * `is_private` follow-up content a report predating the fix for
+     * that ever inlined) permanently on disk and in glpi_documents,
+     * readable by anyone with the core `document` right, with no code
+     * left anywhere that still knows those rows are reports.
+     */
+    private function purgeReportDocuments(): void
+    {
+        if (!$this->db->tableExists('glpi_plugin_glpiticketreportsign_reports')) {
+            return;
+        }
+        $docIds = [];
+        foreach ($this->db->request([
+            'SELECT' => 'documents_id',
+            'FROM'   => 'glpi_plugin_glpiticketreportsign_reports',
+        ]) as $row) {
+            $docId = (int) ($row['documents_id'] ?? 0);
+            if ($docId > 0) {
+                $docIds[$docId] = true;
+            }
+        }
+        foreach (array_keys($docIds) as $docId) {
+            $doc = new \Document();
+            if ($doc->getFromDB($docId)) {
+                $doc->delete(['id' => $docId], true);
+            }
+        }
     }
 
     private function dropNotificationTemplates(): void
