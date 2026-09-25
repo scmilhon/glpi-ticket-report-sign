@@ -35,9 +35,14 @@ jobs:
           cd /tmp/build
           zip -r "$GITHUB_WORKSPACE/glpiticketreportsign-${{ steps.ver.outputs.version }}.zip" glpiticketreportsign
 
+      # Reads the release body straight from RELEASE_NOTES.md at repo
+      # root — update that file as part of the same commit you tag,
+      # and pushing the tag publishes the zip AND the full
+      # description in one shot, no separate "edit release on GitHub"
+      # step needed afterwards.
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
-          generate_release_notes: true
+          body_path: RELEASE_NOTES.md
           files: glpiticketreportsign-${{ steps.ver.outputs.version }}.zip
