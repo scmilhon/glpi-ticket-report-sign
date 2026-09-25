@@ -6,8 +6,8 @@
     <logo>https://raw.githubusercontent.com/scmilhon/glpi-ticket-report-sign/main/logo.jpg</logo>
     <description>
         <short>
-            <lang id="en">Generate per-ticket PDF reports with follow-ups, solutions, embedded images and a hand-drawn technician signature.</lang>
-            <lang id="es">Genera informes PDF por ticket con seguimientos, soluciones, imágenes incrustadas y firma manuscrita del técnico.</lang>
+            <en>Generate per-ticket PDF reports with follow-ups, solutions, embedded images and a hand-drawn technician signature.</en>
+            <es>Genera informes PDF por ticket con seguimientos, soluciones, imágenes incrustadas y firma manuscrita del técnico.</es>
         </short>
     </description>
     <homepage>https://github.com/scmilhon/glpi-ticket-report-sign</homepage>

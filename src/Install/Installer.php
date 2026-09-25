@@ -19,17 +19,23 @@ use Migration;
  *     Used as a server-side allow-list so a token can be revoked
  *     or marked single-use.
  *
- * The createXTable() methods below issue raw CREATE TABLE SQL through
- * $DB->doQuery() rather than the Migration helper — deliberately, not
- * an oversight: Migration has no table-creation method at all (see
- * its addField()/changeField()/dropField()/addKey()/renameTable()/
- * dropTable() — everything there assumes the table already exists),
- * so a hand-written CREATE TABLE is the same pattern GLPI core's own
- * plugins use. Every value interpolated into those strings is a
- * literal class constant, never request or database data — not
- * user-reachable. renameTable() and dropTable() (both real Migration
- * methods) ARE used everywhere below that isn't initial creation —
- * see migrateLegacyPluginKey() and uninstall().
+ * The createXTable() methods below issue a minimal raw CREATE TABLE
+ * through $DB->doQuery() — Migration has no table-creation method at
+ * all (see its addField()/changeField()/dropField()/addKey()/
+ * renameTable()/dropTable() — everything there assumes the table
+ * already exists), and addKey() cannot add a PRIMARY KEY (it always
+ * emits "ADD <type> `<indexname>` (...)", which isn't valid syntax
+ * for PRIMARY KEY), so the primary key column(s) still have to be
+ * established at CREATE TABLE time. That raw statement is kept to
+ * the bare minimum — only the primary key — and every other column
+ * and every secondary index is added straight after through
+ * $this->migration->addField()/addKey(), the same buffered mechanism
+ * upgradeSchema() below already uses, executed by the single
+ * executeMigration() call in install(). Every value interpolated
+ * into these strings is a literal class constant, never request or
+ * database data — not user-reachable. renameTable() and dropTable()
+ * (both real Migration methods) are used everywhere below that isn't
+ * initial creation — see migrateLegacyPluginKey() and uninstall().
  */
 class Installer
 {
@@ -143,23 +149,24 @@ class Installer
             return;
         }
         $sql = "CREATE TABLE `" . Config::TABLE . "` (
-            `id`                       INT UNSIGNED NOT NULL DEFAULT 1,
-            `company_name`             VARCHAR(255) NULL,
-            `company_nit`              VARCHAR(64)  NULL,
-            `company_address`          VARCHAR(255) NULL,
-            `company_website`          VARCHAR(255) NULL,
-            `logo_path`                VARCHAR(255) NULL,
-            `disclaimer_title`         VARCHAR(255) NULL,
-            `disclaimer_body`          LONGTEXT     NULL,
-            `footer_text`              VARCHAR(255) NULL,
-            `section_header_bg`        VARCHAR(7)   NULL,
-            `ticket_id_color`          VARCHAR(7)   NULL,
-            `draft_ttl_days`           INT UNSIGNED NOT NULL DEFAULT 15,
-            `email_logo_path`          VARCHAR(255) NULL,
-            `email_footer_text`        TEXT         NULL,
+            `id` INT UNSIGNED NOT NULL DEFAULT 1,
             PRIMARY KEY (`id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
         $this->db->doQuery($sql);
+
+        $this->migration->addField(Config::TABLE, 'company_name', 'VARCHAR(255) NULL');
+        $this->migration->addField(Config::TABLE, 'company_nit', 'VARCHAR(64) NULL');
+        $this->migration->addField(Config::TABLE, 'company_address', 'VARCHAR(255) NULL');
+        $this->migration->addField(Config::TABLE, 'company_website', 'VARCHAR(255) NULL');
+        $this->migration->addField(Config::TABLE, 'logo_path', 'VARCHAR(255) NULL');
+        $this->migration->addField(Config::TABLE, 'disclaimer_title', 'VARCHAR(255) NULL');
+        $this->migration->addField(Config::TABLE, 'disclaimer_body', 'LONGTEXT NULL');
+        $this->migration->addField(Config::TABLE, 'footer_text', 'VARCHAR(255) NULL');
+        $this->migration->addField(Config::TABLE, 'section_header_bg', 'VARCHAR(7) NULL');
+        $this->migration->addField(Config::TABLE, 'ticket_id_color', 'VARCHAR(7) NULL');
+        $this->migration->addField(Config::TABLE, 'draft_ttl_days', 'INT UNSIGNED NOT NULL DEFAULT 15');
+        $this->migration->addField(Config::TABLE, 'email_logo_path', 'VARCHAR(255) NULL');
+        $this->migration->addField(Config::TABLE, 'email_footer_text', 'TEXT NULL');
     }
 
     /**
@@ -539,25 +546,28 @@ class Installer
         }
         $charset = 'utf8mb4';
         $coll    = 'utf8mb4_unicode_ci';
-        $sql = "CREATE TABLE `glpi_plugin_glpiticketreportsign_reports` (
-            `id`              INT UNSIGNED       NOT NULL AUTO_INCREMENT,
-            `tickets_id`      INT UNSIGNED       NOT NULL DEFAULT 0,
-            `documents_id`    INT UNSIGNED       NOT NULL DEFAULT 0,
-            `version`         INT UNSIGNED       NOT NULL DEFAULT 1,
-            `state`           VARCHAR(16)        NOT NULL DEFAULT 'draft',
-            `signer_name`     VARCHAR(255)       DEFAULT NULL,
-            `signer_users_id` INT UNSIGNED       DEFAULT NULL,
-            `signed_at`       TIMESTAMP NULL     DEFAULT NULL,
-            `signed_ip`       VARCHAR(64)        DEFAULT NULL,
-            `created_users_id` INT UNSIGNED      NOT NULL DEFAULT 0,
-            `date_creation`   TIMESTAMP NULL     DEFAULT NULL,
-            `date_mod`        TIMESTAMP NULL     DEFAULT NULL,
-            PRIMARY KEY (`id`),
-            KEY `tickets_id` (`tickets_id`),
-            KEY `state`      (`state`),
-            KEY `documents_id` (`documents_id`)
+        $table   = 'glpi_plugin_glpiticketreportsign_reports';
+        $sql = "CREATE TABLE `{$table}` (
+            `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            PRIMARY KEY (`id`)
         ) ENGINE=InnoDB DEFAULT CHARSET={$charset} COLLATE={$coll}";
         $this->db->doQuery($sql);
+
+        $this->migration->addField($table, 'tickets_id', 'INT UNSIGNED NOT NULL DEFAULT 0');
+        $this->migration->addField($table, 'documents_id', 'INT UNSIGNED NOT NULL DEFAULT 0');
+        $this->migration->addField($table, 'version', 'INT UNSIGNED NOT NULL DEFAULT 1');
+        $this->migration->addField($table, 'state', "VARCHAR(16) NOT NULL DEFAULT 'draft'");
+        $this->migration->addField($table, 'signer_name', 'VARCHAR(255) DEFAULT NULL');
+        $this->migration->addField($table, 'signer_users_id', 'INT UNSIGNED DEFAULT NULL');
+        $this->migration->addField($table, 'signed_at', 'TIMESTAMP NULL DEFAULT NULL');
+        $this->migration->addField($table, 'signed_ip', 'VARCHAR(64) DEFAULT NULL');
+        $this->migration->addField($table, 'created_users_id', 'INT UNSIGNED NOT NULL DEFAULT 0');
+        $this->migration->addField($table, 'date_creation', 'TIMESTAMP NULL DEFAULT NULL');
+        $this->migration->addField($table, 'date_mod', 'TIMESTAMP NULL DEFAULT NULL');
+
+        $this->migration->addKey($table, 'tickets_id');
+        $this->migration->addKey($table, 'state');
+        $this->migration->addKey($table, 'documents_id');
     }
 
     private function createDiagnosisTable(): void
@@ -565,19 +575,22 @@ class Installer
         if ($this->db->tableExists(Diagnosis::TABLE)) {
             return;
         }
-        $sql = "CREATE TABLE `" . Diagnosis::TABLE . "` (
-            `id`                INT UNSIGNED   NOT NULL AUTO_INCREMENT,
-            `tickets_id`        INT UNSIGNED   NOT NULL,
-            `itilsolutions_id`  INT UNSIGNED   NOT NULL DEFAULT 0,
-            `itilfollowups_id`  INT UNSIGNED   NOT NULL,
-            `users_id`          INT UNSIGNED   NOT NULL DEFAULT 0,
-            `date_creation`     TIMESTAMP NULL DEFAULT NULL,
-            PRIMARY KEY (`id`),
-            KEY `tickets_id`       (`tickets_id`),
-            KEY `itilsolutions_id` (`itilsolutions_id`),
-            KEY `itilfollowups_id` (`itilfollowups_id`)
+        $table = Diagnosis::TABLE;
+        $sql = "CREATE TABLE `{$table}` (
+            `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            PRIMARY KEY (`id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
         $this->db->doQuery($sql);
+
+        $this->migration->addField($table, 'tickets_id', 'INT UNSIGNED NOT NULL');
+        $this->migration->addField($table, 'itilsolutions_id', 'INT UNSIGNED NOT NULL DEFAULT 0');
+        $this->migration->addField($table, 'itilfollowups_id', 'INT UNSIGNED NOT NULL');
+        $this->migration->addField($table, 'users_id', 'INT UNSIGNED NOT NULL DEFAULT 0');
+        $this->migration->addField($table, 'date_creation', 'TIMESTAMP NULL DEFAULT NULL');
+
+        $this->migration->addKey($table, 'tickets_id');
+        $this->migration->addKey($table, 'itilsolutions_id');
+        $this->migration->addKey($table, 'itilfollowups_id');
     }
 
     private function createSignaturesTable(): void
@@ -585,14 +598,16 @@ class Installer
         if ($this->db->tableExists(SavedSignature::TABLE)) {
             return;
         }
-        $sql = "CREATE TABLE `" . SavedSignature::TABLE . "` (
-            `users_id`       INT UNSIGNED   NOT NULL,
-            `signature_png`  LONGTEXT       NOT NULL,
-            `signer_name`    VARCHAR(255)   NULL,
-            `date_mod`       TIMESTAMP NULL DEFAULT NULL,
+        $table = SavedSignature::TABLE;
+        $sql = "CREATE TABLE `{$table}` (
+            `users_id` INT UNSIGNED NOT NULL,
             PRIMARY KEY (`users_id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
         $this->db->doQuery($sql);
+
+        $this->migration->addField($table, 'signature_png', 'LONGTEXT NOT NULL');
+        $this->migration->addField($table, 'signer_name', 'VARCHAR(255) NULL');
+        $this->migration->addField($table, 'date_mod', 'TIMESTAMP NULL DEFAULT NULL');
     }
 
     private function createSignLinksTable(): void
@@ -600,19 +615,22 @@ class Installer
         if ($this->db->tableExists('glpi_plugin_glpiticketreportsign_signlinks')) {
             return;
         }
-        $sql = "CREATE TABLE `glpi_plugin_glpiticketreportsign_signlinks` (
-            `id`            INT UNSIGNED   NOT NULL AUTO_INCREMENT,
-            `reports_id`    INT UNSIGNED   NOT NULL,
-            `token_hash`    CHAR(64)       NOT NULL,
-            `recipient`     VARCHAR(255)   NOT NULL,
-            `expires_at`    TIMESTAMP NULL DEFAULT NULL,
-            `consumed_at`   TIMESTAMP NULL DEFAULT NULL,
-            `created_users_id` INT UNSIGNED NOT NULL DEFAULT 0,
-            `date_creation` TIMESTAMP NULL DEFAULT NULL,
-            PRIMARY KEY (`id`),
-            UNIQUE KEY `token_hash` (`token_hash`),
-            KEY `reports_id` (`reports_id`)
+        $table = 'glpi_plugin_glpiticketreportsign_signlinks';
+        $sql = "CREATE TABLE `{$table}` (
+            `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            PRIMARY KEY (`id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
         $this->db->doQuery($sql);
+
+        $this->migration->addField($table, 'reports_id', 'INT UNSIGNED NOT NULL');
+        $this->migration->addField($table, 'token_hash', 'CHAR(64) NOT NULL');
+        $this->migration->addField($table, 'recipient', 'VARCHAR(255) NOT NULL');
+        $this->migration->addField($table, 'expires_at', 'TIMESTAMP NULL DEFAULT NULL');
+        $this->migration->addField($table, 'consumed_at', 'TIMESTAMP NULL DEFAULT NULL');
+        $this->migration->addField($table, 'created_users_id', 'INT UNSIGNED NOT NULL DEFAULT 0');
+        $this->migration->addField($table, 'date_creation', 'TIMESTAMP NULL DEFAULT NULL');
+
+        $this->migration->addKey($table, 'token_hash', '', 'UNIQUE');
+        $this->migration->addKey($table, 'reports_id');
     }
 }
